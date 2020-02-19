@@ -36,7 +36,7 @@ require(rjson)
 # If included, "assign_locus_numbers" is a JSON object that contains additional parameters
 # that will be used for running this filtering step. It can contain any of the following parameters:
 #
-#	"input_results_file": Optionally, a filtered results file as output by the "post-hoc-filtering"
+#	"input_results_file": Optionally, a filtered results file as output by the "post_hoc_filtering"
 #	step of this pipeline. If not specified, the file will be loaded by default from
 #	{output_dir}/filtered_coloc_table.txt.
 #

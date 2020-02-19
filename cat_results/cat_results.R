@@ -36,8 +36,8 @@ require(rjson)
 #
 #
 #
-# "skip_steps": ["cat-results", ...]
-# If "cat-results" is not included in the "skip_steps" list
+# "skip_steps": ["cat_results", ...]
+# If "cat_results" is not included in the "skip_steps" list
 # parameter, then it will run by default. If included,
 # then this step will be skipped.
 #
@@ -109,7 +109,7 @@ validate_config = function(config_file)
 	if (!("raw_coloc_output_dirs" %in% names(config)))
 	{
 		stop("Config ERROR: You must specify 'raw_coloc_output_dirs' in config file, 
-		     or else skip the cat-results step.")
+		     or else skip the cat_results step.")
 	}
 	if (!("output_dir" %in% names(config)))
 	{

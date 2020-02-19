@@ -12,12 +12,12 @@ require(rjson)
 
 # Optional config parameters:
 #
-# "skip_steps": ["add-hgnc-names", ...]
-# If "add-hgnc-names" is not included in the "skip_steps" list
+# "skip_steps": ["add_hgnc_names", ...]
+# If "add_hgnc_names" is not included in the "skip_steps" list
 # parameter, then it will run by default. If included,
 # then this step will be skipped.
 #
-# "add-hgnc-names" :
+# "add_hgnc_names" :
 # {
 # 	"input_results_file": "file1",		# Optional
 # 	"output_results_file": "file2",		# Optional
@@ -27,7 +27,7 @@ require(rjson)
 #	"hgnc_col_index": 2			# Required if "ensembl_to_hgnc_map_file" is specified
 # }
 #
-# If included, "add-hgnc-names" is a JSON object that contains additional parameters
+# If included, "add_hgnc_names" is a JSON object that contains additional parameters
 # that will be used for running this filtering step.
 #
 #	"input_results_file" is, optionally, the location of the input file to which the HGNC 
@@ -37,7 +37,7 @@ require(rjson)
 #	e.g. "ENSG00000006071.1", where the final "1" after the period represents the gene
 #	version. If version numbers are included, they will be trimmed before merging with
 #	the HGNC table. If "input_results_file" is not included as a parameter, the default
-#	will be to load the output from the "assign-locus-numbers" step, namely the file at
+#	will be to load the output from the "assign_locus_numbers" step, namely the file at
 #	{output_dir}/filtered_coloc_table_with_loci.txt.
 #	
 #	"output_results_file" is, optionally, the file to which the output of this step
@@ -89,7 +89,7 @@ get_gene_table = function(config)
 	column_indices = default_column_indices
 
 	# Load the table of mappings from Ensembl to HGNC
-	if (("add-hgnc-names" %in% config) && ("ensemble_to_hgnc_map_file") %in% names(config$add_hgnc_names))
+	if (("add_hgnc_names" %in% config) && ("ensemble_to_hgnc_map_file") %in% names(config$add_hgnc_names))
 	{
 		# If using a custom file, get the desired column indices too
 		genes = read.table(paste(config$output_dir, config$add_hgnc_names$ensemble_to_hgnc_map_file, sep="/"), header=TRUE, sep="\t")
