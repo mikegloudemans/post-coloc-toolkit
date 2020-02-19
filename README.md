@@ -52,26 +52,30 @@ post-colocalization analysis.
 type 2 diabetes loci with lead GWAS p-value < 1e-8, even though you performed colocalizations 
 with a less stringent p-value threshold of p < 1e-5.)
 
+### add-hgnc-names
+
+Add columns to the results table showing HGNC gene names, when known. Not required for other analyses to run.
+
+### add-rsids
+
+Add columns to the results table showing HGNC gene names, when known. Not required for other analyses to run.
+
 ### assign-locus-numbers
 
 Group nearby SNPs into clusters, and assign each group a locus number.
 
-### summarize-filter-counts
+### classify-results
 
-Summarize the number of SNPs, loci, and genes removed at each level of
-filtering in the colocalization pipeline.
-
-### add-hgnc-names
-
-Add columns to the results table showing HGNC gene names, when known. Not required for other analyses to run.
+Sort candidate colocalization loci into individual categories
 
 ### last-qc-check
 
 Verify that everything ran smoothly and that nothing unwanted made it through the filters.
 
-### classify-results
+### summarize-filter-counts
 
-Sort candidate colocalization loci into individual categories
+Summarize the number of SNPs, loci, and genes removed at each level of
+filtering in the colocalization pipeline.
 
 ### plot-pipeline-filters
 
