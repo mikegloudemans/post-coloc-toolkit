@@ -1,7 +1,3 @@
-require(reshape2)
-require(ggplot2)
-require(dplyr)
-require(readr)
 require(rjson)
 
 ############################################################
@@ -58,7 +54,7 @@ require(rjson)
 #	If the cat-results tool was run prior to this tool with default parameters, then
 #	these parameters don't need to be included, as the file in question will have been generated
 #	in "output_dir" in a fixed location. Namely, the output file will be at {output_dir}/raw_coloc_table.txt.
-,
+#
 #	"out_results_file" is the location where the results file should be written after filtering, 
 #	relative to the top directory of this project. If not specified, it will be written by default 
 #	to {output_dir}/filtered_coloc_table.txt.
@@ -151,33 +147,33 @@ main = function()
 
 validate_config = function(config_file)
 {
-	# Load config file, specified as a command line parameter
-	config = fromJSON(file=config_file)
+	# load config file, specified as a command line parameter
+	config = fromjson(file=config_file)
 
-	# Validate config file to be sure required parameters are present
+	# validate config file to be sure required parameters are present
 	if (!("output_dir" %in% names(config)))
 	{
-		stop("Config ERROR: You must specify 'output_dir' in config file")
+		stop("config error: you must specify 'output_dir' in config file")
 	}
 
 	if (("kept_gwas" %in% names(config)) && ("removed_gwas" %in%  names(config)))
 	{
-		stop("Config ERROR: You can't specify both 'kept_gwas' and 'removed_gwas' in config file")
+		stop("config error: you can't specify both 'kept_gwas' and 'removed_gwas' in config file")
 	}
 	
 	if (("kept_eqtl" %in% names(config)) && ("removed_eqtl" %in%  names(config)))
 	{
-		stop("Config ERROR: You can't specify both 'kept_eqtl' and 'removed_eqtl' in config file")
+		stop("config error: you can't specify both 'kept_eqtl' and 'removed_eqtl' in config file")
 	}
 	if ((("post-hoc-filter" %in% names(config)) && ("gwas_pval_threshold" %in% names(config$post-hoc-filter)) && 
 	     !("standard" %in% config$post-hoc-filter$gwas_pval_threshold)))
 	{
-		stop("Config ERROR: Must include a 'standard' gwas threshold if 'gwas_pval_threshold' is specified.")
+		stop("config error: must include a 'standard' gwas threshold if 'gwas_pval_threshold' is specified.")
 	}
 	if ((("post-hoc-filter" %in% names(config)) && ("eqtl_pval_threshold" %in% names(config$post-hoc-filter)) && 
 	     !("standard" %in% config$post-hoc-filter$eqtl_pval_threshold)))
 	{
-		stop("Config ERROR: Must include a 'standard' eqtl threshold if 'eqtl_pval_threshold' is specified.")
+		stop("config error: must include a 'standard' eqtl threshold if 'eqtl_pval_threshold' is specified.")
 	}
 
 	return(config)
@@ -226,7 +222,7 @@ load_results_file = function(config)
 	}
 	else
 	{
-		return(read.table(file=paste(config$out_dir, "raw_coloc_table.txt", sep="/")))
+		return(read.table(file=paste(config$out_dir, "raw_coloc_table.txt", sep="/")),header=TRUE)
 	}
 }
 
@@ -265,4 +261,4 @@ apply_pval_filter = function(results, config)
 	return(filtered_results)
 }
 
-
+main()

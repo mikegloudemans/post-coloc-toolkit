@@ -52,10 +52,6 @@ post-colocalization analysis.
 type 2 diabetes loci with lead GWAS p-value < 1e-8, even though you performed colocalizations 
 with a less stringent p-value threshold of p < 1e-5.)
 
-NOTE to self: It's OK to further filter after running since this is often necessary, but we should 
-really make it so that nothing MUST be filtered at this step. This means we need to fix the ensemble
-coloc pipeline...
-
 ### assign-locus-numbers
 
 Group nearby SNPs into clusters, and assign each group a locus number.
