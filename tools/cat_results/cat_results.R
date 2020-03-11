@@ -8,7 +8,7 @@ require(rjson)
 ### Concatenate colocalization results
 ############################################################
 
-# Required config parameters (if this step is not skipped):
+# Required cat_config parameters (if this step is not skipped):
 #
 #
 #
@@ -76,47 +76,29 @@ require(rjson)
 #
 #
 
-
-main = function()
+cat_results = function(config)
 {
-	# Load config file
-	config_file = commandArgs(trailingOnly=TRUE)[1]
-	config = validate_config(config_file)
+	# Create handle for config settings specific to this module`
+	cat_config = config$tool_settings$cat_results 
 
 	# User specifies a list of directories containing the required
 	# results, R goes through the directories to find the relevant files.
 	# We then load and concatenate them into one single table.
-	results = get_raw_coloc_results(config$raw_coloc_output_dirs)
-	errors = get_error_logs(config$raw_coloc_output_dirs)
-	skips = get_skip_logs(config$raw_coloc_output_dirs)
+	results = get_raw_coloc_results(cat_config$raw_coloc_output_dirs)
+	results = munge_results(results)
+
+	errors = get_error_logs(cat_config$raw_coloc_output_dirs)
+	skips = get_skip_logs(cat_config$raw_coloc_output_dirs)
 
 	# If specified, get plot-friendly names for each GWAS and eQTL tissue/trait.
-	results$gwas_display_name = get_gwas_display_names(results$gwas_file, config)
-	results$eqtl_display_name = get_eqtl_display_names(results$eqtl_file, config)
+	print(head(results))
+	results$gwas_display_name = get_gwas_display_names(results$gwas_file, cat_config)
+	results$eqtl_display_name = get_eqtl_display_names(results$eqtl_file, cat_config)
 
 	# Output a single table each for results, errors, and skipped variants.
 	write.table(results, file=paste(config$output_dir, "raw_coloc_table.txt", sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
 	write.table(errors, file=paste(config$output_dir, "raw_coloc_errors_table.txt", sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
 	write.table(skips, file=paste(config$output_dir, "raw_coloc_skips_table.txt", sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
-}
-
-validate_config = function(config_file)
-{
-	# Load config file, specified as a command line parameter
-	config = fromJSON(file=config_file)
-
-	# Validate config file to be sure required parameters are present
-	if (!("raw_coloc_output_dirs" %in% names(config)))
-	{
-		stop("Config ERROR: You must specify 'raw_coloc_output_dirs' in config file, 
-		     or else skip the cat_results step.")
-	}
-	if (!("output_dir" %in% names(config)))
-	{
-		stop("Config ERROR: You must specify 'output_dir' in config file")
-	}
-
-	return(config)
 }
 
 get_raw_coloc_results = function(raw_coloc_output_dirs)
@@ -148,7 +130,7 @@ get_error_logs = function(raw_coloc_output_dirs)
 {
 	err_tab = list()
 	i = 1
-	for (d in config$raw_coloc_output_dirs)
+	for (d in raw_coloc_output_dirs)
 	{
 		files = list.files(path=d, full.names = TRUE, recursive = TRUE)
 		error_files = files[grepl("ERROR_variants.txt", files)]
@@ -168,14 +150,14 @@ get_skip_logs = function(raw_coloc_output_dirs)
 {
 	skip_tab = list()
 	i = 1
-	for (d in config$raw_coloc_output_dirs)
+	for (d in raw_coloc_output_dirs)
 	{
 		files = list.files(path=d, full.names = TRUE, recursive = TRUE)
-		skip_files = files[grepl("skipped_variants.txt", files)]
+		skipped_files = files[grepl("skipped_variants.txt", files)]
 		
 		for (sf in skipped_files)
 		{
-			skip_tab[[i]] = read.table(paste(folder, skip, sep="/"), header=FALSE, sep="\t", fill=TRUE, col.names = c("gwas_file", "eqtl_file", "snp.chrom", "snp.pos", "feature", "error", "gwas_data"))
+			skip_tab[[i]] = read.table(sf, header=FALSE, sep="\t", fill=TRUE, col.names = c("gwas_file", "eqtl_file", "snp.chrom", "snp.pos", "feature", "error", "gwas_data"))
 			i = i+1
 		}
 	}
@@ -185,15 +167,14 @@ get_skip_logs = function(raw_coloc_output_dirs)
 
 # Optionally, create "display names" for each GWAS that
 # can be used later in plots and tables.
-get_gwas_display_names(gwas_names, config)
+get_gwas_display_names = function(gwas_names, cat_config)
 {
-	gwas_names = as.character(gwas_names)
-	gwas_display = gwas_names
-	if ("gwas_display_names" %in% names(config))
+	gwas_display = as.character(gwas_names)
+	if ("gwas_display_names" %in% names(cat_config))
 	{
-		for (full_name in names(config$gwas_display_names))
+		for (full_name in names(cat_config$gwas_display_names))
 		{
-			gwas_display[gwas_names == full_name] = config$gwas_display_names[[full_name]]
+			gwas_display[gwas_display == full_name] = cat_config$gwas_display_names[[full_name]]
 		}
 	}
 	return(gwas_display)
@@ -201,17 +182,24 @@ get_gwas_display_names(gwas_names, config)
 
 # Optionally, create "display names" for each eQTL that
 # can be used later in plots and tables.
-get_eqtl_display_names(eqtl_names, config)
+get_eqtl_display_names = function(eqtl_names, cat_config)
 {
-	eqtl_names = as.character(eqtl_names)
-	eqtl_display = eqtl_names
-	if ("eqtl_display_names" %in% names(config))
+	eqtl_display = as.character(eqtl_names)
+	if ("eqtl_display_names" %in% names(cat_config))
 	{
-		for (full_name in names(config$eqtl_display_names))
+		for (full_name in names(cat_config$eqtl_display_names))
 		{
-			eqtl_display[eqtl_names == full_name] = config$eqtl_display_names[[full_name]]
+			eqtl_display[eqtl_display == full_name] = cat_config$eqtl_display_names[[full_name]]
 		}
 	}
+	return(eqtl_display)
 }
 
-main()
+# A temporary function just for now, to make existing
+# results headers compatible with the pipeline
+munge_results = function(results)
+{
+	mr = results
+	colnames(mr)[which(colnames(mr) == "base_gwas_file")] = "gwas_file"
+	return(mr)
+}
