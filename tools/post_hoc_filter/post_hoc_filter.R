@@ -91,92 +91,46 @@ require(rjson)
 
 
 
-main = function()
+post_hoc_filter = function(config)
 {
-	# Load config file
-	config_file = commandArgs(trailingOnly=TRUE)[1]
-	config = validate_config(config_file)
+	# Make a handle for accessing the tool-specific settings
+	filter_config = config$tool_settings$post_hoc_filter
 
 	# Load results, errors, skips files
-	results = load_results_file(config)
+	results = load_post_hoc_filter_input_file(filter_config)
 
 	pre_results_dim = dim(results)[1]
 
-	if ("post_hoc_filter" %in% names(config))
+	# If specified, filter results down to a limited set of GWAS and/or eQTL studies 
+
+	if ("kept_gwas" %in% names(filter_config))
 	{
-
-		# If specified, filter results down to a limited set of GWAS and/or eQTL studies 
-
-		if ("kept_gwas" %in% names(config$post_hoc_filter))
-		{
-			results = filter_by_gwas(results, config$post_hoc_filter$kept_gwas, keep=TRUE)
-		}
-		else if ("removed_gwas" %in%  names(config$post_hoc_filter))
-		{
-			results = filter_by_gwas(results, config$post_hoc_filter$removed_gwas, keep=FALSE)
-		}
-
-		if ("kept_eqtl" %in% names(config$post_hoc_filter))
-		{
-			results = filter_by_eqtls(results, config$post_hoc_filter$kept_eqtls, keep=TRUE)
-		}
-		else if ("removed_eqtl" %in%  names(config$post_hoc_filter))
-		{
-			results = filter_by_gwas(results, config$post_hoc_filter$removed_eqtls, keep=FALSE)
-		}
-
-		# Filter by p-vals
-		results = apply_pval_filter(results, config)
+		results = filter_by_gwas(results, filter_config$kept_gwas, keep=TRUE)
 	}
+	else if ("removed_gwas" %in%  names(filter_config))
+	{
+		results = filter_by_gwas(results, filter_config$removed_gwas, keep=FALSE)
+	}
+
+	if ("kept_eqtl" %in% names(filter_config))
+	{
+		results = filter_by_eqtls(results, filter_config$kept_eqtl, keep=TRUE)
+	}
+	else if ("removed_eqtl" %in%  names(filter_config))
+	{
+		results = filter_by_gwas(results, filter_config$removed_eqtl, keep=FALSE)
+	}
+
+	results = apply_pval_filter(results, filter_config)
 
 	# Display warning if not a single result was removed.
 	if (dim(results)[1] == pre_results_dim)
 	{
-		print("Warning: No tests were removed during filtering.")
+		print("Warning: No tests were removed during post-hoc filtering.")
 	}
 
 	# Write filtered output files
-	if (("post_hoc_filter" %in% names(config)) && ("out_results_file") %in% names(config$post_hoc_filter))
-	{
-		write.table(results, config$post_hoc_filter$out_results_file, quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
-	} else
-	{
-		write.table(results, file=paste(config$out_dir, "filtered_coloc_table.txt", sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
-	}
-}
-
-validate_config = function(config_file)
-{
-	# load config file, specified as a command line parameter
-	config = fromjson(file=config_file)
-
-	# validate config file to be sure required parameters are present
-	if (!("output_dir" %in% names(config)))
-	{
-		stop("config error: you must specify 'output_dir' in config file")
-	}
-
-	if (("kept_gwas" %in% names(config)) && ("removed_gwas" %in%  names(config)))
-	{
-		stop("config error: you can't specify both 'kept_gwas' and 'removed_gwas' in config file")
-	}
-	
-	if (("kept_eqtl" %in% names(config)) && ("removed_eqtl" %in%  names(config)))
-	{
-		stop("config error: you can't specify both 'kept_eqtl' and 'removed_eqtl' in config file")
-	}
-	if ((("post_hoc_filter" %in% names(config)) && ("gwas_pval_threshold" %in% names(config$post_hoc_filter)) && 
-	     !("standard" %in% config$post_hoc_filter$gwas_pval_threshold)))
-	{
-		stop("config error: must include a 'standard' gwas threshold if 'gwas_pval_threshold' is specified.")
-	}
-	if ((("post_hoc_filter" %in% names(config)) && ("eqtl_pval_threshold" %in% names(config$post_hoc_filter)) && 
-	     !("standard" %in% config$post_hoc_filter$eqtl_pval_threshold)))
-	{
-		stop("config error: must include a 'standard' eqtl threshold if 'eqtl_pval_threshold' is specified.")
-	}
-
-	return(config)
+	write.table(results, paste(config$output_dir, filter_config$out_file, sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
 }
 
 # Remove rows from "data" that are not from one of the 
@@ -214,22 +168,15 @@ pval_passing = function(x, threshold_set)
 	return(FALSE)
 }
 
-load_results_file = function(config)
+load_post_hoc_filter_input_file = function(filter_config)
 {
-	if ((("post_hoc_filter") %in% names(config)) && ("full_results_file" %in% names(config$post_hoc_filter)))
-	{
-		return(read.table(file=config$post_hoc_filter$full_results_file, header=TRUE))
-	}
-	else
-	{
-		return(read.table(file=paste(config$out_dir, "raw_coloc_table.txt", sep="/")),header=TRUE)
-	}
+	return(read.table(filter_config$input_file, header=TRUE))
 }
 
 # Function that tests GWAS pval / eQTL trait rows for validity
 pval_passing = function(x, threshold_set)
 {
-	pvalue = as.numeric(x[1])
+	pvalue = 10^(-as.numeric(x[1]))
 	trait = unlist(x[2])
 	if (pvalue < threshold_set$standard)
 	{
@@ -246,19 +193,17 @@ pval_passing = function(x, threshold_set)
 }
 
 
-apply_pval_filter = function(results, config)
+apply_pval_filter = function(results, filter_config)
 {
 	filtered_results = results
-	if ("gwas_pval_threshold" in config$post_hoc_filter)
+	if ("gwas_pval_threshold" %in% names(filter_config))
 	{
-		filtered_results = filtered_results[apply(filtered_results[c("pvalue", "trait")], 1, FUN=pval_passing, threshold = config$post_hoc_filter$gwas_pval_threshold),] 
+		filtered_results = filtered_results[apply(filtered_results[c("gwas_neg_log_pvalue", "gwas_file")], 1, FUN=pval_passing, threshold = filter_config$gwas_pval_threshold),] 
 	}
-	if ("eqtl_pval_threshold" in config$post_hoc_filter)
+	if ("eqtl_pval_threshold" %in% names(filter_config))
 	{
-		filtered_results = filtered_results[apply(filtered_results[c("pvalue", "trait")], 1, FUN=pval_passing, threshold = config$post_hoc_filter$eqtl_pval_threshold),] 
+		filtered_results = filtered_results[apply(filtered_results[c("eqtl_neg_log_pvalue", "eqtl_file")], 1, FUN=pval_passing, threshold = filter_config$eqtl_pval_threshold),] 
 	}
 
 	return(filtered_results)
 }
-
-main()

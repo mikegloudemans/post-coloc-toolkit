@@ -84,24 +84,23 @@ cat_results = function(config)
 	# User specifies a list of directories containing the required
 	# results, R goes through the directories to find the relevant files.
 	# We then load and concatenate them into one single table.
-	results = get_raw_coloc_results(cat_config$raw_coloc_output_dirs)
+	results = get_cat_results_input(cat_config$input_dirs)
 	results = munge_results(results)
 
-	errors = get_error_logs(cat_config$raw_coloc_output_dirs)
-	skips = get_skip_logs(cat_config$raw_coloc_output_dirs)
+	errors = get_error_logs(cat_config$input_dirs)
+	skips = get_skip_logs(cat_config$input_dirs)
 
 	# If specified, get plot-friendly names for each GWAS and eQTL tissue/trait.
-	print(head(results))
 	results$gwas_display_name = get_gwas_display_names(results$gwas_file, cat_config)
 	results$eqtl_display_name = get_eqtl_display_names(results$eqtl_file, cat_config)
 
 	# Output a single table each for results, errors, and skipped variants.
-	write.table(results, file=paste(config$output_dir, "raw_coloc_table.txt", sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
-	write.table(errors, file=paste(config$output_dir, "raw_coloc_errors_table.txt", sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
-	write.table(skips, file=paste(config$output_dir, "raw_coloc_skips_table.txt", sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
+	write.table(results, file=paste(config$output_dir, cat_config$cat_results_coloc_out_file, sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
+	write.table(errors, file=paste(config$output_dir, cat_config$cat_results_errors_out_file, sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
+	write.table(skips, file=paste(config$output_dir, cat_config$cat_results_skips_out_file, sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
 }
 
-get_raw_coloc_results = function(raw_coloc_output_dirs)
+get_cat_results_input = function(raw_coloc_output_dirs)
 {
 	tabs = list()
 	i = 1
@@ -201,5 +200,7 @@ munge_results = function(results)
 {
 	mr = results
 	colnames(mr)[which(colnames(mr) == "base_gwas_file")] = "gwas_file"
+	colnames(mr)[which(colnames(mr) == "X.log_gwas_pval")] = "gwas_neg_log_pvalue"
+	colnames(mr)[which(colnames(mr) == "X.log_eqtl_pval")] = "eqtl_neg_log_pvalue"
 	return(mr)
 }

@@ -6,6 +6,7 @@
 
 # Load all the tools
 source("tools/cat_results/cat_results.R")
+source("tools/post_hoc_filter/post_hoc_filter.R")
 source("tools/validate_config/validate_config.R")
 
 # Load config file as JSON object, from the specified input file
@@ -22,7 +23,7 @@ config = fromJSON(file=config_file)
 
 # Make sure config file is valid; this will throw an
 # error and stop the program if it isn't
-validate_config(config)
+config = validate_config(config)
 
 # Make the output directory if it doesn't already exist
 if (!dir.exists(config$output_dir))
@@ -39,7 +40,15 @@ if (!dir.exists(config$output_dir))
 # Concatenate results, if requested
 if (!("skip_steps" %in% names(config)) || !("cat_results" %in% names(config$skip_steps))) 
 {
+	print("Beginning cat_results step.")
 	cat_results(config)
+	print("Finished cat_results step.")
 }
 
+if (!("skip_steps" %in% names(config)) || !("post_hoc_filter" %in% names(config$skip_steps))) 
+{
+	print("Beginning post_hoc_filter step.")
+	post_hoc_filter(config)
+	print("Finished post_hoc_filter step.")
+}
 
