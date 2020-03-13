@@ -1,3 +1,8 @@
+# TODO: Specify all constants at the top, here, instead of making the
+# coder hunt through the code for them
+
+# TODO: Break validate_config file down into separate functions
+
 validate_config = function(config)
 { 
 	new_config = config
@@ -86,6 +91,44 @@ validate_config = function(config)
 		}
 		new_config$tool_settings$post_hoc_filter = filter_config
 	}
+	
+	# Check for add_hgnc_names
+	if(!("add_hgnc_names" %in% names(config$skip_steps)))
+	{
+		if (!("add_hgnc_names") %in% names(config$tool_settings))
+		{
+			stop("Config ERROR: You must specify 'add_hgnc_names' in the 'tool_settings' object, 
+			     or else skip the add_hgnc_names step.")
+		}
+
+		hgnc_config = config$tool_settings$add_hgnc_names
+
+		# Figure out the input ensembl to hgnc file
+		if (("ensembl_to_hgnc_map_file" %in% names(hgnc_config)))
+		{
+			if (!(("ensembl_col_index" %in% names(hgnc_config)) && ("hgnc_col_index" %in% names(hgnc_config))))
+			{
+				stop("Config ERROR: When using a custom Ensembl-to-HGNC mapping, you
+				     must specify 'ensembl_col_index' and 'hgnc_col_index' in the 'add_hgnc_names' parameters.")
+			}
+		}
+		else
+		{
+			# Use default file if no specific mapping provided
+			hgnc_config$ensemble_to_hgnc_map_file = "data/hgnc/ensembl_to_hgnc.txt"
+			hgnc_config$ensembl_col_index = 1
+			hgnc_config$hgnc_col_index = 3
+		}
+		
+		# If no output file specified, use a default one
+		if (!("out_file" %in% names(hgnc_config)))
+		{
+			hgnc_config$out_file = "add_hgnc_names_out.txt"
+		}
+
+		new_config$tool_settings$add_hgnc_names = hgnc_config
+	}
+
 
 	return(new_config)
 }

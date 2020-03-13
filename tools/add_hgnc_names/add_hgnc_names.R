@@ -55,102 +55,47 @@ require(rjson)
 column_titles = c("ensembl", "hgnc")
 default_column_indices=c(1,3)
 
-main = function()
+add_hgnc_names = function(config)
 {
-        # Load config file
-	config_file = commandArgs(trailingOnly=TRUE)[1]
-        config = validate_config(config_file)
+	hgnc_config = config$tool_settings$add_hgnc_names
 
 	# Load results table
-	results = load_results_table(config)
+	results = load_results_file_for_hgnc(hgnc_config)
 
 	# Get table of mappings to HGNC genes
-	genes = get_gene_table(config)
+	genes = get_hgnc_table(hgnc_config)
 
 	# Remove entries with duplicated Ensembl IDs
 	genes = genes[!duplicated(genes$ensembl),]
 	
 	# Combine HGNC table with results table
-	results = merge(genes, results, by.x="feature", by.y="ensembl", all.y=TRUE)
+	results = merge(genes, results, by="ensembl", all.y=TRUE)
 
-	# Write output table of results with HGNC annotations
-	if (("add_hgnc_names" %in% names(config)) && ("output_results_file" %in% names(config$add_hgnc_name)))
-	{
-		write.table(results, config$add_hgnc_name$output_results_file, quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
-	} else
-	{
-		write.table(results, file=paste(config$out_dir, "filtered_with_hgnc.txt", sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
-	}
-
+	write.table(results, paste(config$output_dir, hgnc_config$out_file, sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
 }
 
-get_gene_table = function(config)
+get_hgnc_table = function(hgnc_config)
 {
-	column_indices = default_column_indices
-
-	# Load the table of mappings from Ensembl to HGNC
-	if (("add_hgnc_names" %in% config) && ("ensemble_to_hgnc_map_file") %in% names(config$add_hgnc_names))
-	{
-		# If using a custom file, get the desired column indices too
-		genes = read.table(paste(config$output_dir, config$add_hgnc_names$ensemble_to_hgnc_map_file, sep="/"), header=TRUE, sep="\t")
-		column_indices[1] = config$add_hgnc_names$ensembl_col_index
-		column_indices[2] = config$add_hgnc_names$hgnc_col_index
-	}
-	else
-	{
-		genes = read.table("data/hgnc/ensembl_to_hgnc.txt", header=TRUE, sep="\t")
-	}
+	# Load the table of mappings from Ensembl to HGNC	
+	column_indices = as.numeric(c(hgnc_config$ensembl_col_index, hgnc_config$hgnc_col_index))
+	genes = read.table(hgnc_config$ensemble_to_hgnc_map_file, header=TRUE, sep="\t")
 
 	genes = genes[,column_indices]
 	colnames(genes) = c("ensembl", "hgnc")
 	return(genes)
 }
 
-
-validate_config = function(config_file)
+load_results_file_for_hgnc = function(hgnc_config)
 {
-        # Load config file, specified as a command line parameter
-        config = fromJSON(file=config_file)
-
-        # Validate config file to be sure required parameters are present
-        if (("add_hgnc_names" %in% names(config)))
-        {
-		if (("ensembl_to_hgnc_map_file" %in% names(config$add_hgnc_names)))
-		{
-			if (!(("ensembl_col_index" %in% names(config$add_hgnc_names)) && ("hgnc_col_index" %in% names(config$add_hgnc_names))))
-			{
-				stop("Config ERROR: When using a custom Ensembl-to-HGNC mapping, you
-				     must specify 'ensembl_col_index' and 'hgnc_col_index' in the config file")
-			}
-
-		}
-	}
-	if (!("output_dir" %in% names(config)))
-	{
-	        stop("Config ERROR: You must specify 'output_dir' in config file")
-	}
-
-        return(config)
-}
-
-load_results_file = function(config)
-{
-	if ((("add_hgnc_names") %in% names(config)) && ("input_results_file" %in% names(config$add_hgnc_names)))
-	{
-		d = read.table(file=config$add_hgnc_names$input_results_file, header=TRUE)
-	}
-	else
-	{
-		d = read.table(file=paste(config$output_dir, "i-dont-know", sep="/"), header=TRUE)
-	}
+	data = read.table(file=hgnc_config$input_file, header=TRUE)
 
 	# Quick input check
-	if (!("feature" %in% colnames(d)))
+	if (!("feature" %in% colnames(data)))
 	{
 		stop("input error: the input coloc results table must have a 'feature' column showing Ensembl IDs")
 	}
 
-	return(d)
-}
+	data$ensembl = substring(data$feature, 1, 15) 
 
-main()
+	return(data)
+}

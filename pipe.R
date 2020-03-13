@@ -7,6 +7,7 @@
 # Load all the tools
 source("tools/cat_results/cat_results.R")
 source("tools/post_hoc_filter/post_hoc_filter.R")
+source("tools/add_hgnc_names/add_hgnc_names.R")
 source("tools/validate_config/validate_config.R")
 
 # Load config file as JSON object, from the specified input file
@@ -52,3 +53,9 @@ if (!("skip_steps" %in% names(config)) || !("post_hoc_filter" %in% names(config$
 	print("Finished post_hoc_filter step.")
 }
 
+if (!("skip_steps" %in% names(config)) || !("add_hgnc_names" %in% names(config$skip_steps))) 
+{
+	print("Beginning add_hgnc_names step.")
+	add_hgnc_names(config)
+	print("Finished add_hgnc_names step.")
+}
