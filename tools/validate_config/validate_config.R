@@ -129,6 +129,73 @@ validate_config = function(config)
 		new_config$tool_settings$add_hgnc_names = hgnc_config
 	}
 
+	# Check for add_rsids
+	if(!("add_rsids" %in% names(config$skip_steps)))
+        {
+		if (!("add_rsids") %in% names(config$tool_settings))
+		{
+			stop("Config ERROR: You must specify 'add_rsids' in the 'tool_settings' object, 
+			     or else skip the add_rsids step.")
+		}
+
+		rsid_config = config$tool_settings$add_rsids
+		
+		# Make sure the columns are marked if a custom rsid file is being used.
+		if (("dbsnp_file" %in% names(rsid_config)))
+		{
+			if (!("rsid_col_index" %in% names(rsid_config)))
+			{
+				stop("Config ERROR: When using a custom rsid mapping for 'add_rsids', you
+				     must specify 'rsid_col_index' in the config file.")
+			}
+			if (!(("rsid_col_index" %in% names(rsid_config)) && ("chr_col_index" %in% names(rsid_config)
+										  && ("pos_col_index" %in% names(rsid_config)))))
+			{
+				if (("use_tabix" %in% names(rsid_config)) && (rsid_config$use_tabix == "FALSE"))
+				stop("Config ERROR: When using a custom rsid mapping that is not tabix'ed, you
+				     must specify 'rsid_col_index', 'chr_col_index', and 'pos_col_index' in the config file")
+			}
+
+			if ("genome_build" %in% names(rsid_config))
+			{
+				print("Warning: you have specified both the 'genome_build' and the 'dbsnp_file' 
+				      parameters for the 'add_rsids' tool. The 'genome_build' will be ignored for this
+				      step and the custom rsid file used instead, regardless of its genome version.'")
+			}
+		} else 
+		{
+			
+			rsid_config$use_tabix = "TRUE"
+			rsid_config$rsid_col_index = 3
+			if (!("genome_build" %in% names(rsid_config)))
+			{
+				stop("Config ERROR: must either specify an rsid mapping file, or
+				     specify the 'genome_build' parameter")	
+			}
+			else if (!(rsid_config$genome_build %in% c("hg19", "hg38")))
+			{
+				stop("Config ERROR: 'genome_build' parameter for 'add_rsids' must equal 
+				     either 'hg19' or 'hg38'")	
+			}
+			
+			if (rsid_config$genome_build == "hg19")
+			{
+				rsid_config$dbsnp_file = "data/dbsnp/hg19/common_all_20170710.vcf.gz"
+			} else if (rsid_config$genome_build == "hg38")
+			{
+				rsid_config$dbsnp_file = "data/dbsnp/hg38/common_all_20170710.vcf.gz"
+			}
+
+		}
+		
+		# If no output file specified, use a default one
+		if (!("out_file" %in% names(rsid_config)))
+		{
+			rsid_config$out_file = "add_rsids_out.txt"
+		}
+
+		new_config$tool_settings$add_rsids = rsid_config
+	}
 
 	return(new_config)
 }

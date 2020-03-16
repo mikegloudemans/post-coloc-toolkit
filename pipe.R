@@ -8,6 +8,7 @@
 source("tools/cat_results/cat_results.R")
 source("tools/post_hoc_filter/post_hoc_filter.R")
 source("tools/add_hgnc_names/add_hgnc_names.R")
+source("tools/add_rsids/add_rsids.R")
 source("tools/validate_config/validate_config.R")
 
 # Load config file as JSON object, from the specified input file
@@ -58,4 +59,11 @@ if (!("skip_steps" %in% names(config)) || !("add_hgnc_names" %in% names(config$s
 	print("Beginning add_hgnc_names step.")
 	add_hgnc_names(config)
 	print("Finished add_hgnc_names step.")
+}
+
+if (!("skip_steps" %in% names(config)) || !("add_rsids" %in% names(config$skip_steps))) 
+{
+	print("Beginning add_rsids step.")
+	add_rsids(config)
+	print("Finished add_rsids step.")
 }
