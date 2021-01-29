@@ -54,9 +54,8 @@ require(rjson)
 # them to be grouped in an all-or-none fashion.
 #
 
-min_locus_distance = 1000000
 
-main = function()
+assign_locus_numbers = function()
 {
 	# Read table with colocalization results
 	
@@ -70,8 +69,7 @@ main = function()
 	# Get loci
 	if (("assign_locus_numbers" %in% names(config)) && ("min_locus_distance" %in% names(config$assign_locus_numbers)))
 	{
-		min_locus_distance = config$assign_locus_numbers$min_locus_distance
-	}
+		}
 	results$locus = group_to_loci(results$ref_snp, min_locus_distance)
 
 	# Output SNP table with loci
@@ -138,16 +136,7 @@ load_results_file = function(config)
 
 validate_config = function(config_file)
 {
-	# load config file, specified as a command line parameter
-	config = fromjson(file=config_file)
-
-	# validate config file to be sure required parameters are present
-	if (!("output_dir" %in% names(config)))
-	{
-		stop("config error: you must specify 'output_dir' in config file")
-	}
-
-	return(config)
+	
 }
 
 main()

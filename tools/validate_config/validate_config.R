@@ -3,6 +3,12 @@
 
 # TODO: Break validate_config file down into separate functions
 
+# TODO: Make this whole thing check the file in a more modular way so that it's easier
+# to change requirements and checks as we go
+
+# TODO: Make it so that the tool_settings sub-object can be made optional for cases in which there's
+# a default parameter available for all settings
+
 validate_config = function(config)
 { 
 	new_config = config
@@ -196,6 +202,32 @@ validate_config = function(config)
 
 		new_config$tool_settings$add_rsids = rsid_config
 	}
+
+	# Check for assign_locus_numbers
+	if(!("assign_locus_numbers" %in% names(config$skip_steps)))
+        {
+		if (!("assign_locus_numbers" %in% names(config$tool_settings)))
+		{
+			stop("Config ERROR: You must specify 'assign_locus_numbers' in the 'tool_settings' object, 
+			     or else skip the assign_locus_numbers step.")
+		}
+
+		locus_config = config$tool_settings$assign_locus_numbers
+
+		if (!("min_locus_distance" %in% names(locus_config)))
+		{
+			locus_config = min_locus_distance = 1000000
+		}
+
+		# If no output file specified, use a default one
+		if (!("out_file" %in% names(locus_config)))
+		{
+			locus_config$out_file = "assign_locus_numbers_out.txt"
+		}
+
+		new_config$tool_settings$assign_locus_numbers = locus_config
+	}
+
 
 	return(new_config)
 }
