@@ -51,5 +51,5 @@ rule assign_locus_numbers:
 	params:
 		config = "config/{study}.config"
 	shell:
-		"Rscript tools/assign_locus_numbers.R {params.config} {input} {output}"
+		"Rscript tools/assign_locus_numbers/assign_locus_numbers.R {params.config} {input} {output}"
 
