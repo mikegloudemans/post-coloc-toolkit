@@ -5,7 +5,7 @@ require(dplyr)
 ### Add rsids to a file annotated with only chromosome and position
 ####################################################################
 
-# Required rsid_config parameters (if this step is not skipped):
+# Required config parameters (if this step is not skipped):
 #
 # "output_dir": "dir4"
 # Path to the directory where all output files should be placed, including
@@ -16,7 +16,7 @@ require(dplyr)
 # If a custom rsid mapping file is supplied (see optional parameters section below),
 # then this parameter can be omitted.
 
-# Optional rsid_config parameters:
+# Optional config parameters:
 #
 # "skip_steps": ["add_rsids", ...]
 # If "add_rsids" is not included in the "skip_steps" list
@@ -84,40 +84,64 @@ require(dplyr)
 #	TODO: Add a step of cross-referencing the ref / alt alleles with those in dbSNP to be totally sure they match
 #
 
+default_hg38_dbsnp = "data/dbsnp/hg38/common_all_20170710.vcf.gz"
+default_hg19_dbsnp = "data/dbsnp/hg19/common_all_20170710.vcf.gz"
+default_chr_col_index = 1
+default_pos_col_index = 2
+default_rsid_col_index = 3
 
-add_rsids = function(config)
+add_rsids = function(config_file, input_file, output_file)
 {
-	rsid_config = config$tool_settings$add_rsids
+	config = fromJSON(file=config_file)$add_rsids
+	config$input_file = input_file
+	config$output_file = output_file
 
 	# Load results table
-	results = load_results_file_for_rsids(rsid_config)
-
+	results = load_results_file_for_rsids(config)
 	# Add rsids, probably by tabix lookup...
-	results = add_rsid_column(results, rsid_config)
+	results = add_rsid_column(results, config)
 
 	# Write output table of results with rsids
 	print(head(results))
-	write.table(results, paste(config$output_dir, rsid_config$out_file, sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
+	write.table(results, config$output_file, col.names=TRUE, row.names=FALSE, quote=FALSE, sep="\t")
 }
 
-add_rsid_column = function(results, rsid_config)
+add_rsid_column = function(results, config)
 {
-	if (("use_tabix" %in% names(rsid_config$add_rsids)) && (rsid_config$use_tabix == "FALSE"))
+	# NOTE: This might be expanded later to include custom dbSNP file; for now
+	# we're just assuming the default files
+	if (FALSE)
 	{
-		# If explicitly told the custom file is not tabix'ed, load it to memory
-		return(get_rsids_without_tabix(results, rsid_config$dbsnp_file, rsid_config$rsid_col_index,
-					       rsid_config$chr_col_index, rsid_config$pos_col_index))	
-	} else if (file.exists(paste0(rsid_config$dbsnp_file, ".tbi")))
+		if (("use_tabix" %in% names(config$add_rsids)) && (config$use_tabix == "FALSE"))
+		{
+			# If explicitly told the custom file is not tabix'ed, load it to memory
+			return(get_rsids_without_tabix(results, config$dbsnp_file, config$rsid_col_index,
+						       config$chr_col_index, config$pos_col_index))	
+		} else if (file.exists(paste0(config$dbsnp_file, ".tbi")))
+		{
+			# Tabix file exists, so use it
+			return(get_rsids_with_tabix(results, config$dbsnp_file, config$rsid_col_index))
+		} else
+		{
+			print("Warning: No tabix file exists for 'add_rsids'; custom SNP-to-rsid 
+			      map will now be fully loaded into memory.")	
+			# Tabix file doesn't even exist, so we're loading the file to memory
+			return(get_rsids_without_tabix(results, config$dbsnp_file, config$rsid_col_index,
+						       config$chr_col_index, config$pos_col_index))	
+		}
+	}
+
+	if (config$genome_file == "hg19")
 	{
-		# Tabix file exists, so use it
-		return(get_rsids_with_tabix(results, rsid_config$dbsnp_file, rsid_config$rsid_col_index))
+		return(get_rsids_with_tabix(results, default_hg19_dbsnp, default_rsid_col_index,
+			default_chr_col_index, default_pos_col_index))
+	} else if (config$genome_file == "hg38")
+	{
+		return(get_rsids_with_tabix(results, default_hg38_dbsnp, default_rsid_col_index))
 	} else
 	{
-		print("Warning: No tabix file exists for 'add_rsids'; custom SNP-to-rsid 
-		      map will now be fully loaded into memory.")	
-		# Tabix file doesn't even exist, so we're loading the file to memory
-		return(get_rsids_without_tabix(results, rsid_config$dbsnp_file, rsid_config$rsid_col_index,
-					       rsid_config$chr_col_index, rsid_config$pos_col_index))	
+		stop('Must specify genome build in the config file:
+		     set config -> add_rsids -> genome_file to either "hg19" or "hg38"')
 	}
 }
 
@@ -130,6 +154,7 @@ get_rsids_with_tabix = function(results, dbsnp_file, rsid_index)
 		
 	rsids$rsid = sapply(1:dim(rsids)[1], function(i)
 	{
+		print(i)
 		chr = rsids$chr[i]
 		pos = rsids$pos[i]
 		# Try it with and without the "chr" notation at the front
@@ -168,30 +193,30 @@ get_rsids_without_tabix = function(results, dbsnp_file, rsid_index, chr_index, p
 	return(merge(results, rsids))
 }
 
-validate_rsid_config = function(rsid_config_file)
+validate_config = function(config_file)
 {
-        # Load rsid_config file, specified as a command line parameter
-        rsid_config = fromJSON(file=rsid_config_file)
+        # Load config file, specified as a command line parameter
+        config = fromJSON(file=config_file)
 
 	# Make sure the columns are marked if a custom rsid file is being used.
-        if (("add_rsids" %in% names(rsid_config)))
+        if (("add_rsids" %in% names(config)))
         {
-		if (("dbsnp_file" %in% names(rsid_config$add_rsids)))
+		if (("dbsnp_file" %in% names(config$add_rsids)))
 		{
-			if (!("rsid_col_index" %in% names(rsid_config$add_rsids)))
+			if (!("rsid_col_index" %in% names(config$add_rsids)))
 			{
 				stop("Config ERROR: When using a custom rsid mapping, you
-				     must specify 'rsid_col_index' in the rsid_config file.")
+				     must specify 'rsid_col_index' in the config file.")
 			}
-			if (!(("rsid_col_index" %in% names(rsid_config$add_rsids)) && ("chr_col_index" %in% names(rsid_config$add_rsids)
-										  && ("pos_col_index" %in% names(rsid_config$add_rsids)))))
+			if (!(("rsid_col_index" %in% names(config$add_rsids)) && ("chr_col_index" %in% names(config$add_rsids)
+										  && ("pos_col_index" %in% names(config$add_rsids)))))
 			{
-				if (("use_tabix" %in% names(rsid_config$add_rsids)) && (rsid_config$add_rsids$use_tabix == "FALSE"))
+				if (("use_tabix" %in% names(config$add_rsids)) && (config$add_rsids$use_tabix == "FALSE"))
 				stop("Config ERROR: When using a custom rsid mapping that is not tabix'ed, you
-				     must specify 'rsid_col_index', 'chr_col_index', and 'pos_col_index' in the rsid_config file")
+				     must specify 'rsid_col_index', 'chr_col_index', and 'pos_col_index' in the config file")
 			}
 
-			if ("genome_build" %in% names(rsid_config))
+			if ("genome_build" %in% names(config))
 			{
 				print("Warning: you have specified both the 'genome_build' and the 'dbsnp_file' 
 				      parameters. This is allowed, but the 'genome_build' will be ignored for this
@@ -201,14 +226,14 @@ validate_rsid_config = function(rsid_config_file)
 	}
 	
 	# Make sure the genome build is specified if no custom rsid file has been supplied.
-	if ((!("add_rsids" %in% names(rsid_config))) || (!("dbsnp_file" %in% names(rsid_config$add_rsids))))
+	if ((!("add_rsids" %in% names(config))) || (!("dbsnp_file" %in% names(config$add_rsids))))
 	{
-		if (!("genome_build" %in% names(rsid_config)))
+		if (!("genome_build" %in% names(config)))
 		{
 			stop("Config ERROR: must either specify an rsid mapping file, or
 			     specify the 'genome_build' parameter")	
 		}
-		else if (!(rsid_config$genome_build %in% c("hg19", "hg38")))
+		else if (!(config$genome_build %in% c("hg19", "hg38")))
 		{
 			stop("Config ERROR: 'genome_build' parameter for 'add_rsids' must equal 
 			     either 'hg19' or 'hg38'")	
@@ -216,17 +241,17 @@ validate_rsid_config = function(rsid_config_file)
 
 	}
 
-	if (!("output_dir" %in% names(rsid_config)))
+	if (!("output_dir" %in% names(config)))
 	{
-	        stop("Config ERROR: You must specify 'output_dir' in rsid_config file")
+	        stop("Config ERROR: You must specify 'output_dir' in config file")
 	}
 
-        return(rsid_config)
+        return(config)
 }
 
-load_results_file_for_rsids = function(rsid_config)
+load_results_file_for_rsids = function(config)
 {
-	data = read.table(rsid_config$input_file, header=TRUE, sep="\t")
+	data = read.table(config$input_file, header=TRUE, sep="\t")
 
 	if (!("ref_snp" %in% colnames(data)))
 	{
@@ -237,3 +262,9 @@ load_results_file_for_rsids = function(rsid_config)
 	return(data)
 }
 
+args = commandArgs(trailingOnly=TRUE)
+
+config_file = args[1]
+input_file = args[2]
+output_file = args[3]
+add_rsids(config_file, input_file, output_file)
