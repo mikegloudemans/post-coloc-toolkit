@@ -94,10 +94,8 @@ classify_results = function(config_file, input_file, output_file, summary_file)
 				Check to make sure rules define the entire space of loci.", rule_name))
 		}
 
-		# TODO: Print summary table of the rule name to an output file
-	
 		locus_classes = results %>% group_by(!!as.name(rule_name)) %>% summarize(length(unique(locus)))
-		write.table(locus_classes, file = config$summary_file, append=TRUE, sep="\t", quote=FALSE, row.names=FALSE,col.names=TRUE)
+		suppressWarnings(write.table(locus_classes, file = config$summary_file, append=TRUE, sep="\t", quote=FALSE, row.names=FALSE,col.names=TRUE))
 
 	}
 
@@ -188,20 +186,22 @@ class_by_column_specificity = function(results, rule, coloc_threshold, rule_name
 	class_membership = rep("None", length(loci_list))
 
 	# Figure out which tissues had strong, weak, no colocs at each locus
-	tissue_coloc = sub %>% group_by(locus, !!as.name(rule$column)) %>% summarize(has_coloc = as.numeric(sum(clpp_mod > coloc_threshold) > 0))
+	tissue_coloc = results %>% group_by(locus, !!as.name(rule$column)) %>% summarize(has_coloc = as.numeric(sum(score > coloc_threshold) > 0))
 
-	all_colocs = tissue_coloc[tissue_coloc$has_coloc,] 
+	all_colocs = tissue_coloc[tissue_coloc$has_coloc == TRUE,] 
 	coloc_loci = unique(all_colocs$locus)
-	
+
+	print(head(all_colocs))
+
 	# Run through the rules backwards, in ascending order of priority,
 	# since some rules may satisfy more than one class
 	for (class in rev(rule$categories))
 	{
 		# Keep track of all the loci passing each rule
-		pass = sapply(1:max(coloc_counts$locus), function(x)
+		pass = sapply(loci_list, function(x)
 	       	{
 			this_locus = all_colocs %>% filter(locus == x)
-			locus_tissues = unique(this_locus[[rule$column]])
+			locus_tissues = unique(this_locus[[rule[["column"]]]])
 
 			# If no colocalizations, it's just classed as None, the default
 			if (length(locus_tissues) == 0)
@@ -246,10 +246,12 @@ class_by_column_specificity = function(results, rule, coloc_threshold, rule_name
 			}
 			return(TRUE)
 	        })
-
+		
 		# NOTE: Some previous designations may be overwritten, since we're applying the
 		# rules in ascending priority order
-		class_membership[which(loci_list %in% pass)] = class
+		class_membership[pass] = class$class_name
+
+		print(class_membership)
 	}		
 	all_classes = class_membership[match(results$locus, loci_list)]
 	return(all_classes)
