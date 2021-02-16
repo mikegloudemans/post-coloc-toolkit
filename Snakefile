@@ -20,10 +20,21 @@ rule post_hoc_filter:
 	shell:
 		"Rscript tools/post_hoc_filter/post_hoc_filter.R {params.config} {input} {output}"
 
+rule mutate_columns:
+	input:
+		"output/post_hoc_filter/{study}_colocalization_results.txt"
+	output:
+		"output/mutate_columns/{study}_colocalization_results.txt"
+	params:
+		config = "config/{study}.config"
+	shell:
+		"Rscript tools/mutate_columns/mutate_columns.R {params.config} {input} {output}"
+
+
 # This rule should probably be optional too
 rule add_hgnc_names:
 	input:
-		"output/post_hoc_filter/{study}_colocalization_results.txt"
+		"output/mutate_columns/{study}_colocalization_results.txt"
 	output:
 		"output/add_hgnc_names/{study}_colocalization_results.txt"
 	params:
@@ -42,7 +53,6 @@ rule add_rsids:
 	shell:
 		"Rscript tools/add_rsids/add_rsids.R {params.config} {input} {output}"
 
-# This rule should probably be optional too
 rule assign_locus_numbers:
 	input:
 		"output/add_rsids/{study}_colocalization_results.txt"
@@ -52,4 +62,14 @@ rule assign_locus_numbers:
 		config = "config/{study}.config"
 	shell:
 		"Rscript tools/assign_locus_numbers/assign_locus_numbers.R {params.config} {input} {output}"
+
+rule classify_results:
+	input:
+		"output/assign_locus_numbers/{study}_colocalization_results.txt"
+	output:
+		"output/classify_results/{study}_colocalization_results.txt", summary = "output/classify_results/{study}_class_summary.txt"
+	params:
+		config = "config/{study}.config"
+	shell:
+		"Rscript tools/classify_results/classify_results.R {params.config} {input} {output} {output.summary}"
 

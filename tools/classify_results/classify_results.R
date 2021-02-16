@@ -47,97 +47,120 @@ require(dplyr)
 #	own sets of rules.
 #
 
-main = function()
+classify_results = function(config_file, input_file, output_file, summary_file)
 {
+	# TODO: Have some sort of default way that this is done, if no custom file
+	# is specified -- maybe just a default config file that is downloaded along with the other
+	# ones
+
+	# TODO: Make it so the config file for this can either be specified separately OR
+	# defined directly in the config files
+
 	# Load config file
-	# Validate rules too...
-		# Each rule should have its own clpp threshold
+	config = fromJSON(file=config_file)$classify_results
+	config$input_file = input_file
+	config$output_file = output_file
+	config$summary_file = summary_file
 
-	# Load results file
-
-	# Create table for storing summary info?
-	step2_list = rep("", length(loci_list))
-	step3_list = rep("", length(loci_list))
-
-	rule_list = config$classify_results$rules
-	# Apply rules, one at a time
-	for (rule in rule_list)
+	# Delete old class summary file
+	if (file.exists(config$summary_file))
 	{
-		# Add column tagging loci based on this rule...
-		if (rule_list$rule$type == "num_colocs")
-		{
-			results = class_by_num_coloc(results, rule_list$rule, rule)
-		}
-		else if (rule$type == "subsets")
-		{
-			results = class_by_study_subsets(results, rule_list$rule, rule)
-
-		} else if (rule$type == "tiers")
-		{
-			results = class_by_study_tiers(results, rule_list$rule, rule)
-		}
+		unlink(config$summary_file)
 	}
 
-	# Compute any necessary summary information
+	# Load results table
+	results = load_results_file(config)
+	
+	# TODO: Validate rules too...
 
-	# Output results files
+	# Apply rules, one at a time
+	rule_list = config$rules
+	for (rule_name in names(rule_list))
+	{
+		rule = rule_list[[rule_name]]
+		# Add column tagging loci based on this rule...
+		if (rule$type == "num_colocs")
+		{
+			results[[rule_name]] = class_by_num_coloc(results, rule, config$colocalization_threshold_score, rule_name)
+		} else if (rule$type == "specificity")
+		{
+			results[[rule_name]] = class_by_column_specificity(results, rule, config$colocalization_threshold_score, rule_name)
+		}
+
+		# All loci should belong to a group at this point; if not, the groups are misspecified
+		if(!(sum(results[[rule_name]] == "") == 0))
+		{
+			print(sprintf("Warning: not all loci in have been assigned to a group in %s.
+				Check to make sure rules define the entire space of loci.", rule_name))
+		}
+
+		# TODO: Print summary table of the rule name to an output file
+	
+		locus_classes = results %>% group_by(!!as.name(rule_name)) %>% summarize(length(unique(locus)))
+		write.table(locus_classes, file = config$summary_file, append=TRUE, sep="\t", quote=FALSE, row.names=FALSE,col.names=TRUE)
+
+	}
+
+	# Output SNP table with loci
+	write.table(results, config$output_file, quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
 
 }
 
 # Perform a sort based on the number of candidate genes
 # and the total number of colocalized genes
-class_by_num_coloc = function(results, rule, rule_name)
+class_by_num_coloc = function(results, rule, coloc_threshold, rule_name)
 {
 	loci_list = unique(results$locus)
+
 	class_membership = rep("", length(loci_list))
 
 	# For each feature, test whether it passed colocalization threshold at this locus 
-	summary = results %>% group_by(locus, qtl_feature) %>% summarize(colocs=sum(coloc_score >= rule$coloc_threshold))
+	summary = results %>% group_by(locus, feature) %>% summarize(colocs=sum(score >= coloc_threshold))
 
 	# Now summarize the number of colocalized genes and the number of candidate genes at each locus
-	coloc_counts = summary %>% group_by(locus) %>% summarize(num_coloc_genes = sum(colocs > 0), num_candidate_genes=length(qtl_feature))
+	coloc_counts = summary %>% group_by(locus) %>% summarize(num_coloc_genes = sum(colocs > 0), num_candidate_genes=length(feature))
 
 	# Each of these rule types takes as input a value X, a list of indices of candidate loci, and the
 	# metadata about the number of colocalizations and tested genes at every locus.
 	# It outputs the subset of these indices for which the corresponding loci pass the test.
 	num_candidates_equals = function(x, loci, coloc_matrix)
 	{
-		return(loci[loci %in% (coloc_matrix[coloc_counts$num_candidate_genes == x,]$locus)])
+		return(loci[loci %in% (coloc_matrix[coloc_counts$num_candidate_genes == as.numeric(x),]$locus)])
 	}
 	num_colocs_equals = function(x, loci, coloc_matrix)
 	{
-		return(loci[loci %in% (coloc_matrix[coloc_counts$num_coloc_genes == x,]$locus)])
+		return(loci[loci %in% (coloc_matrix[coloc_counts$num_coloc_genes == as.numeric(x),]$locus)])
 	}
 	num_candidates_greater_than = function(x, loci, coloc_matrix)
 	{
-		return(loci[loci %in% (coloc_matrix[coloc_counts$num_candidate_genes > x,]$locus)])
+		return(loci[loci %in% (coloc_matrix[coloc_counts$num_candidate_genes > as.numeric(x),]$locus)])
 	}
 	num_colocs_greater_than = function(x, loci, coloc_matrix)
 	{
-		return(loci[loci %in% (coloc_matrix[coloc_counts$num_coloc_genes > x,]$locus)])
+		return(loci[loci %in% (coloc_matrix[coloc_counts$num_coloc_genes > as.numeric(x),]$locus)])
 	}
 
-	for (type in names(rule$classes))
+	for (type in names(rule$categories))
 	{
 		# Keep track of all the loci passing each rule
 		pass = 1:max(coloc_counts$locus)
 
 		# Now go through all the rule types for this class to see which loci pass that rule
-		if ("num_candidates_equals" %in% names(rule$classes[[type]][[1]]))
+		if ("num_candidates_equals" %in% names(rule$categories[[type]]))
 		{
-			pass = num_candidates_equals(rule$classes[[type]][[1]]["num_candidates_equals"], pass, coloc_counts)
+			pass = num_candidates_equals(rule$categories[[type]]["num_candidates_equals"], pass, coloc_counts)
 		}
-		if ("num_colocs_equals" %in% names(rule$classes[[type]][[1]]))
+		if ("num_colocs_equals" %in% names(rule$categories[[type]]))
 		{
-			pass = num_colocs_equals(rule$classes[[type]][[1]]["num_colocs_equals"], pass, coloc_counts)
+			pass = num_colocs_equals(rule$categories[[type]]["num_colocs_equals"], pass, coloc_counts)
 		}
-		if ("num_candidates_greater_than" %in% names(rule$classes[[type]][[1]]))
+		if ("num_candidates_greater_than" %in% names(rule$categories[[type]]))
 		{
-			pass = num_candidates_greater_than(rule$classes[[type]][[1]]["num_candidates_greater_than"], pass, coloc_counts)
+			pass = num_candidates_greater_than(rule$categories[[type]]["num_candidates_greater_than"], pass, coloc_counts)
 		}
-		if ("num_colocs_greater_than" %in% names(rule$classes[[type]][[1]]))
+		if ("num_colocs_greater_than" %in% names(rule$categories[[type]]))
 		{
-			pass = num_colocs_greater_than(rule$classes[[type]][[1]]["num_colocs_greater_than"], pass, coloc_counts)
+			pass = num_colocs_greater_than(rule$categories[[type]]["num_colocs_greater_than"], pass, coloc_counts)
 		}
 
 		# Make sure no locus has been double-classified; this would be a mistake
@@ -148,141 +171,102 @@ class_by_num_coloc = function(results, rule, rule_name)
 			stop()
 		}
 		class_membership[which(loci_list %in% pass)] = type
+
 	}
 
-	# All loci should belong to a group at this point; if not, the groups are misspecified
-	if(!(sum(step1_list == "") == 0))
-	{
-		print("Warning: not all loci ")
-	}
+	all_classes = class_membership[match(results$locus, loci_list)]
+
+	return(all_classes)
 }
 
-# Identify loci that only colocalize in a limited subset of all GWAS or eQTL studies
-class_by_study_subsets = function()
+# Perform a sort based on the number of candidate genes
+# and the total number of colocalized genes
+class_by_column_specificity = function(results, rule, coloc_threshold, rule_name)
 {
-	# TODO: Let the clusters be clusters of GWAS or eQTL
+	loci_list = unique(results$locus)
+
+	class_membership = rep("None", length(loci_list))
 
 	# Figure out which tissues had strong, weak, no colocs at each locus
-	tissue_coloc = sub %>% group_by(locus, eqtl_file) %>% summarize(has_strong_coloc = as.numeric(sum(clpp_mod > strong_clpp_threshold) > 0), has_weak_only = as.numeric((sum(clpp_mod > strong_clpp_threshold) == 0) & (sum(clpp_mod > weak_clpp_threshold) > 0)), has_no_coloc = as.numeric(sum(clpp_mod > weak_clpp_threshold) == 0))
+	tissue_coloc = sub %>% group_by(locus, !!as.name(rule$column)) %>% summarize(has_coloc = as.numeric(sum(clpp_mod > coloc_threshold) > 0))
 
-	# Make sure all groups have been assigned to exactly one of these classes
-	stopifnot(sum(rowSums(tissue_coloc[,3:5]) == 0) == 0)
-
-	strong = tissue_coloc[tissue_coloc$has_strong_coloc == 1,] 
-	strong_loci = unique(strong$locus)
-	strong_classes = sapply(strong_loci, function(x)
-	       {
-			tissues = strong[strong$locus == x,]$eqtl_file
-			# Test whether the colocalized tissues match some
-			# tissue group of interest
-			
-			for (type in names(class_config$step2_tissue_sorting))
-			{
-				if(sum(!(class_config$step2_tissue_sorting[[type]] %in% tissues)) + sum(!(tissues %in% class_config$step2_tissue_sorting[[type]])) == 0)
-				{
-					return(type)
-				}
-			}
-
-			# If not, it still does have at least one coloc,
-			# so doesn't belong in the "None" category
-			return("Other")
-	       })
-	step2_list[which(loci_list %in% strong_loci)] = strong_classes
-
-	# Then check weak colocs
-	weak = tissue_coloc[tissue_coloc$has_weak_only == 1,]
-	weak_loci = unique(weak$locus)
-	# We only care about weak colocs if there aren't strong colocs
-	weak_loci = weak_loci[!(weak_loci %in% strong_loci)]
-	weak_classes = sapply(weak_loci, function(x)
-	       {
-			tissues = weak[weak$locus == x,]$eqtl_file
-			# Test whether the colocalized tissues match some
-			# tissue group of interest
-			
-			for (type in names(class_config$step2_tissue_sorting))
-			{
-				if(sum(!(class_config$step2_tissue_sorting[[type]] %in% tissues)) + sum(!(tissues %in% class_config$step2_tissue_sorting[[type]])) == 0)
-				{
-					return(type)
-				}
-			}
-
-			# If not, it still does have at least one coloc,
-			# so doesn't belong in the "None" category
-			return("Other")
-	       })
-	step2_list[which(loci_list %in% weak_loci)] = weak_classes
-
-	# Finally, the rest should have no colocs at all
-	# Make sure these loci actually have no colocs, then tag them
-	coloc_by_locus = tissue_coloc %>% group_by(locus) %>% summarize(total_coloc = sum(has_strong_coloc + has_weak_only) == 0)
-	stopifnot(sum(!(step2_list[which(loci_list %in% coloc_by_locus$locus[coloc_by_locus$total_coloc])] == "")) == 0)
-	step2_list[which(loci_list %in% coloc_by_locus$locus[coloc_by_locus$total_coloc])] = "None"
-
-	# Just make sure every site's been assigned now
-	stopifnot(sum(step2_list == "") == 0)
-}
-
-# Classify sites by which of a ranked list of tiers they colocalize in
-class_by_study_tiers = function()
-{
-
-	###################################
-	# Part 3: Which GWAS matter most?
-	###################################
-
-	top_colocs = sub %>% group_by(locus, base_gwas_file) %>% summarize(best = max(clpp_mod))
-
-	# Tag colocalized loci by priority level
-	gwas_cumul_loci = c()
-	for (i in 1:length(class_config$step3_gwas_sorting))
+	all_colocs = tissue_coloc[tissue_coloc$has_coloc,] 
+	coloc_loci = unique(all_colocs$locus)
+	
+	# Run through the rules backwards, in ascending order of priority,
+	# since some rules may satisfy more than one class
+	for (class in rev(rule$categories))
 	{
-		gwas_loci = unique(top_colocs[(top_colocs$base_gwas_file %in% class_config$step3_gwas_sorting[[i]][["traits"]]) & (top_colocs$best > weak_clpp_threshold),]$locus)
-		gwas_loci = gwas_loci[!(gwas_loci %in% gwas_cumul_loci)]
-		step3_list[which(loci_list %in% gwas_loci)] = class_config$step3_gwas_sorting[[i]][["name"]]
+		# Keep track of all the loci passing each rule
+		pass = sapply(1:max(coloc_counts$locus), function(x)
+	       	{
+			this_locus = all_colocs %>% filter(locus == x)
+			locus_tissues = unique(this_locus[[rule$column]])
 
-		gwas_cumul_loci = c(gwas_cumul_loci, gwas_loci)
-	}
+			# If no colocalizations, it's just classed as None, the default
+			if (length(locus_tissues) == 0)
+			{
+				return(FALSE)
+			}
 
-	# The remainder of colocalizing loci will be tagged as "other".
-	# This only matters if we have traits that are in none of the tiers.
-	loci_other = top_colocs[top_colocs$best > weak_clpp_threshold,]$locus
-	loci_other = loci_other[!(loci_other %in% gwas_cumul_loci)]
-	step3_list[which(loci_list %in% loci_other)] = "Other"
+			if ("contains_exactly" %in% names(class))
+			{
+				if ((sum(!(class$contains_exactly %in% locus_tissues)) != 0) || (sum(!(locus_tissues %in% class$contains_exactly))!=0))
+				{
+					return(FALSE)
+				}	
+			}
+			if ("contains_all" %in% names(class))
+			{
+				if (sum(!(class$contains_all %in% locus_tissues)) != 0)
+				{
+					return(FALSE)
+				}	
+			}
+			if ("contains_none" %in% names(class))
+			{
+				if (sum(class$contains_none %in% locus_tissues) != 0)
+				{
+					return(FALSE)
+				}	
+			}
+			if ("contains_some" %in% names(class))
+			{
+				if (sum(class$contains_some %in% locus_tissues) == 0)
+				{
+					return(FALSE)
+				}	
+			}
+			if ("contains_only" %in% names(class))
+			{
+				if (sum(!(locus_tissues %in% class$contains_only)) != 0)
+				{
+					return(FALSE)
+				}	
+			}
+			return(TRUE)
+	        })
 
-	# Make sure all the remaining loci don't actually have any colocalization whatsoever
-	# (as computed for step 2 of prioritization)
-	stopifnot(sum(!(step3_list[which(loci_list %in% coloc_by_locus$locus[coloc_by_locus$total_coloc])] == "")) == 0)
-	step3_list[which(loci_list %in% coloc_by_locus$locus[coloc_by_locus$total_coloc])] = "None"
-	# Now just make sure all have been tagged
-	stopifnot(sum(step3_list == "") == 0)
+		# NOTE: Some previous designations may be overwritten, since we're applying the
+		# rules in ascending priority order
+		class_membership[which(loci_list %in% pass)] = class
+	}		
+	all_classes = class_membership[match(results$locus, loci_list)]
+	return(all_classes)
 
-
-	####### Put all the results together ########
-
-	classes = data.frame(list(locus=loci_list, step1=step1_list, step2=step2_list, step3=step3_list))
-	write.table(classes, file=paste0(full_config$out_dir, "/coloc_classification_", full_config$analysis_date, ".txt"), quote=FALSE, row.names=FALSE, col.names=TRUE, sep="\t")
-
-
-	results_summaries = list()
-	results_summaries$step1 = classes %>% group_by(step1) %>% summarize(length(locus))
-	results_summaries$step2 = classes %>% group_by(step2) %>% summarize(length(locus))
-	results_summaries$step3 = classes %>% group_by(step3) %>% summarize(length(locus))
-
-
-	summary_file = paste0(full_config$out_dir, "/coloc_class_summary_", full_config$analysis_date, ".txt")
-
-	# Remove this file if it already exists
-	suppressWarnings(file.remove(file=summary_file))
-	suppressWarnings(lapply(results_summaries, function(x) {write.table( data.frame(x), summary_file, append= T, sep='\t', quote=FALSE, row.names=FALSE, col.names=TRUE); write("\n\n",file=summary_file, append=TRUE)}))
-
-	# Add classifications to the original data frame and rewrite it to a file.
-
-	data_extended = full_join(data, classes)
-	write.table(data_extended, file=paste0(full_config$out_dir, "/clpp_results_categorized_", full_config$analysis_date, ".txt"), sep='\t', quote=FALSE, row.names=FALSE, col.names=TRUE)
 }
 
-main()
+load_results_file = function(config)
+{
+	d = read.table(file=config$input_file, header=TRUE, sep="\t")
 
+	return(d)
+}
+
+args = commandArgs(trailingOnly=TRUE)
+
+config_file = args[1]
+input_file = args[2]
+output_file = args[3]
+summary_file = args[4]
+classify_results(config_file, input_file, output_file, summary_file)
