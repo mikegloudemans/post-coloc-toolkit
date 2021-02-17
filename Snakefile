@@ -73,3 +73,13 @@ rule classify_results:
 	shell:
 		"Rscript tools/classify_results/classify_results.R {params.config} {input} {output} {output.summary}"
 
+rule get_ld_buddies:
+	input:
+		"output/classify_results/{study}_colocalization_results.txt"
+	output:
+		"output/assign_locus_numbers/{study}_ld_buddies.txt"
+	params:
+		config = "config/{study}.config"
+	shell:
+		"Rscript tools/get_ld_buddies/get_ld_buddies.R {params.config} {input} {output}"
+
