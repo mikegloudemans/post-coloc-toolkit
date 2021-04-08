@@ -101,15 +101,18 @@ rule make_heatmaps:
 	params:
 		config = "config/{study}.config"
 	shell:
-		"Rscript tools/make_heatmaps/make_heatmpas.R {params.config} {input} {output}"
+		"Rscript tools/make_heatmaps/make_heatmaps.R {params.config} {input} {output}"
 
 rule plot_category_bars:
 	input:
-		"output/classify_results/{study}_class_summary.txt"
+		"output/classify_results/{study}_class_summary_completion_indicator.tmp"
 	output:
-		"output/plot_category_bars/{study}"
+		"output/plot_category_bars/{study}_completion_indicator.tmp"
 	params:
-		config = "config/{study}.config"
+		config = "config/{study}.config", 
+		in_base = "output/classify_results/{study}", 
+		out_base = "output/plot_category_bars/{study}"
+
 	shell:
-		"Rscript tools/plot_category_bars/plot_category_bars.R {params.config} {input} {output}"
+		"Rscript tools/plot_category_bars/plot_category_bars.R {params.config} {params.in_base} {params.out_base} {output}"
 
