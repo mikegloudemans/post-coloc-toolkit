@@ -1,12 +1,31 @@
+import sys
+
 ####################################################################
 # post-colocalization Wizard!
 ####################################################################
 
 # An interactive wizard for getting the toolkit up and running ASAP!
 
-main = function()
-{
-}
+def main()
+    message = '''
+    Welcome to the post-colocalization toolkit!\n\nTo run this kit, you'll
+    need a single file where each row represents the results of a colocalization test.\n\n
+    If you have such a file, enter the absolute or relative path here, 
+    or type "exit" to leave the wizard and prepare
+    your file.'''
+
+    valid = False
+    while not valid:
+        inp = input(message)
+        valid, message = validate_results_file(inp)
+
+def validate_results_file(inp)
+    if inp == "exit":
+        sys.exit()
+    if not os.path.isfile(inp):
+        return False, "That file doesn't seem to exist. Enter a valid file name,
+                or 'exit' to leave the wizard and double-check."
+    return valid, None
 
 main()
 

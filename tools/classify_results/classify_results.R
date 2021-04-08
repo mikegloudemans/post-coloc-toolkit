@@ -62,12 +62,6 @@ classify_results = function(config_file, input_file, output_file, summary_file)
 	config$output_file = output_file
 	config$summary_file = summary_file
 
-	# Delete old class summary file
-	if (file.exists(config$summary_file))
-	{
-		unlink(config$summary_file)
-	}
-
 	# Load results table
 	results = load_results_file(config)
 	
@@ -81,10 +75,10 @@ classify_results = function(config_file, input_file, output_file, summary_file)
 		# Add column tagging loci based on this rule...
 		if (rule$type == "num_colocs")
 		{
-			results[[rule_name]] = class_by_num_coloc(results, rule, config$colocalization_threshold_score, rule_name)
+			results[[rule_name]] = class_by_num_coloc(results, rule, rule_name)
 		} else if (rule$type == "specificity")
 		{
-			results[[rule_name]] = class_by_column_specificity(results, rule, config$colocalization_threshold_score, rule_name)
+			results[[rule_name]] = class_by_column_specificity(results, rule, rule_name)
 		}
 
 		# All loci should belong to a group at this point; if not, the groups are misspecified
@@ -93,27 +87,27 @@ classify_results = function(config_file, input_file, output_file, summary_file)
 			print(sprintf("Warning: not all loci in have been assigned to a group in %s.
 				Check to make sure rules define the entire space of loci.", rule_name))
 		}
-
-		locus_classes = results %>% group_by(!!as.name(rule_name)) %>% summarize(length(unique(locus)))
-		suppressWarnings(write.table(locus_classes, file = config$summary_file, append=TRUE, sep="\t", quote=FALSE, row.names=FALSE,col.names=TRUE))
-
+		locus_classes = results %>% group_by(!!as.name(rule_name)) %>% summarize(num_loci=length(unique(locus)))
+		suppressWarnings(write.table(locus_classes, file = gsub("_completion_indicator.tmp", sprintf("_%s.txt", rule_name), config$summary_file), sep="\t", quote=FALSE, row.names=FALSE,col.names=TRUE))
 	}
 
 	# Output SNP table with loci
 	write.table(results, config$output_file, quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
 
+	system(sprintf("touch %s", config$summary_file))
 }
+
 
 # Perform a sort based on the number of candidate genes
 # and the total number of colocalized genes
-class_by_num_coloc = function(results, rule, coloc_threshold, rule_name)
+class_by_num_coloc = function(results, rule, rule_name)
 {
 	loci_list = unique(results$locus)
 
 	class_membership = rep("", length(loci_list))
 
 	# For each feature, test whether it passed colocalization threshold at this locus 
-	summary = results %>% group_by(locus, feature) %>% summarize(colocs=sum(score >= coloc_threshold))
+	summary = results %>% group_by(locus, feature) %>% summarize(colocs=sum(coloc_status=="coloc"))
 
 	# Now summarize the number of colocalized genes and the number of candidate genes at each locus
 	coloc_counts = summary %>% group_by(locus) %>% summarize(num_coloc_genes = sum(colocs > 0), num_candidate_genes=length(feature))
@@ -186,12 +180,10 @@ class_by_column_specificity = function(results, rule, coloc_threshold, rule_name
 	class_membership = rep("None", length(loci_list))
 
 	# Figure out which tissues had strong, weak, no colocs at each locus
-	tissue_coloc = results %>% group_by(locus, !!as.name(rule$column)) %>% summarize(has_coloc = as.numeric(sum(score > coloc_threshold) > 0))
+	tissue_coloc = results %>% group_by(locus, !!as.name(rule$column)) %>% summarize(has_coloc = as.numeric(sum(coloc_status == "coloc") > 0))
 
 	all_colocs = tissue_coloc[tissue_coloc$has_coloc == TRUE,] 
 	coloc_loci = unique(all_colocs$locus)
-
-	print(head(all_colocs))
 
 	# Run through the rules backwards, in ascending order of priority,
 	# since some rules may satisfy more than one class
@@ -250,8 +242,6 @@ class_by_column_specificity = function(results, rule, coloc_threshold, rule_name
 		# NOTE: Some previous designations may be overwritten, since we're applying the
 		# rules in ascending priority order
 		class_membership[pass] = class$class_name
-
-		print(class_membership)
 	}		
 	all_classes = class_membership[match(results$locus, loci_list)]
 	return(all_classes)

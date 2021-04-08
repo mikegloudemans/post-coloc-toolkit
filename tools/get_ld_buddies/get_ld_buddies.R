@@ -84,8 +84,7 @@ get_ld_buddies = function(config_file, input_file, output_file)
 			all_loci$locus[loc_table_idx] = l
 		}
 	}
-
-	all_loci = all_loci %>% filter(!grepl("alt", chr) & !grepl("Un", chr) & !grepl("hap", chr))
+	all_loci = all_loci %>% filter(!grepl("alt", chr) & !grepl("Un", chr) & !grepl("hap", chr)) %>% filter(chr != "")
 
 	# One row per variant
 	write.table(all_loci, file = config$output_file, sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)

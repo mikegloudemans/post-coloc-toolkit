@@ -107,6 +107,8 @@ post_hoc_filter = function(config_file, input_file, output_file)
 	results = apply_pval_filter(results, config)
 	results = apply_snp_count_filter(results, config)
 
+	results = get_coloc_status(results, config)
+
 	# Display warning if not a single result was removed.
 	if (dim(results)[1] == pre_results_dim)
 	{
@@ -133,9 +135,18 @@ filter_by_qtl = function(data, qtl, keep=TRUE)
 	return(new_data)
 }
 
+get_coloc_status = function(data, config)
+{
+	new_data = data
+	new_data$coloc_status = "none"
+	new_data$score = as.numeric(new_data$score)
+	new_data$coloc_status[new_data$score > as.numeric(config$colocalization_threshold)] = "coloc"
+	return(new_data)
+}
+
 load_post_hoc_filter_input_file = function(config)
 {
-	t = read.table(config$input_file, header=TRUE)
+	t = read.table(config$input_file, header=TRUE, stringsAsFactors=FALSE)
 
 	t = t %>% select(ref_snp, qtl_file, feature, n_snps, neg_log_gwas_pval, neg_log_qtl_pval, gwas_file, score)
 

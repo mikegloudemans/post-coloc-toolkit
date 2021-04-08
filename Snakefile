@@ -67,7 +67,7 @@ rule classify_results:
 	input:
 		"output/assign_locus_numbers/{study}_colocalization_results.txt"
 	output:
-		"output/classify_results/{study}_colocalization_results.txt", summary = "output/classify_results/{study}_class_summary.txt"
+		"output/classify_results/{study}_colocalization_results.txt", summary = "output/classify_results/{study}_class_summary_completion_indicator.tmp"
 	params:
 		config = "config/{study}.config"
 	shell:
@@ -77,9 +77,39 @@ rule get_ld_buddies:
 	input:
 		"output/classify_results/{study}_colocalization_results.txt"
 	output:
-		"output/assign_locus_numbers/{study}_ld_buddies.txt"
+		"output/get_ld_buddies/{study}_ld_buddies.txt"
 	params:
 		config = "config/{study}.config"
 	shell:
 		"Rscript tools/get_ld_buddies/get_ld_buddies.R {params.config} {input} {output}"
+
+rule get_vep_consequences:
+	input:
+		"output/get_ld_buddies/{study}_ld_buddies.txt"
+	output:
+		"output/get_vep_consequences/{study}_vep_consequences.txt"
+	params:
+		config = "config/{study}.config"
+	shell:
+		"python tools/get_vep_consequences/get_vep_consequences.py {params.config} {input} {output}"
+
+rule make_heatmaps:
+	input:
+		"output/classify_results/{study}_colocalization_results.txt"
+	output:
+		"output/make_heatmaps/{study}"
+	params:
+		config = "config/{study}.config"
+	shell:
+		"Rscript tools/make_heatmaps/make_heatmpas.R {params.config} {input} {output}"
+
+rule plot_category_bars:
+	input:
+		"output/classify_results/{study}_class_summary.txt"
+	output:
+		"output/plot_category_bars/{study}"
+	params:
+		config = "config/{study}.config"
+	shell:
+		"Rscript tools/plot_category_bars/plot_category_bars.R {params.config} {input} {output}"
 

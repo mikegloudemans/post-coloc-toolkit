@@ -5,9 +5,6 @@ require(dplyr)
 ### Create / mutate new column names for display
 ############################################################
 
-# Config parameters:
-# TODO: 
-
 mutate_columns = function(config_file, input_file, output_file)
 {
 	config = fromJSON(file=config_file)$mutate_columns
@@ -39,7 +36,7 @@ mutate_columns = function(config_file, input_file, output_file)
 
 load_results_file = function(config)
 {
-	t = read.table(config$input_file, header=TRUE, sep="\t")
+	t = read.table(config$input_file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 	return(t)	
 }
