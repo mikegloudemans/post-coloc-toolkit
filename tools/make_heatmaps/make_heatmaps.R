@@ -9,10 +9,6 @@ suppressWarnings(suppressMessages(library(tidyr)))
 suppressWarnings(suppressMessages(require(rjson)))
 
 chunk_size = 100
-if ("chunk_size" %in% names(config))
-{
-	chunk_size = as.numeric(config$chunk_size)
-}
 row_height=0.21
 col_width=0.2
 
@@ -23,29 +19,38 @@ source("tools/make_heatmaps/color_scheme.R")
 ### Create colocalization heatmaps
 ############################################################
 
-make_heatmaps = function(config_file, input_file, output_directory)
+make_heatmaps = function(config_file, input_file, output_directory, completion_indicator)
 {
 	# Load config file
 	config = fromJSON(file=config_file)$make_heatmaps
 	config$input_file = input_file
 	config$output_directory = output_directory
 	
+	if ("chunk_size" %in% names(config))
+	{
+		chunk_size = as.numeric(config$chunk_size)
+	}
+
 	# Load results table
-	coloc_res = load_results_file(config)
-	
-	coloc_res = get_coloc_results(coloc_file)
+	coloc_res = get_coloc_results(config$input_file, config)
 	coloc_res = coloc_res %>% arrange(-score)
 	
 	# Make an individual split for every stratification wanted.
        	# Specify this in the config file	
 	for (strat in config$file_strata)
 	{
+
 		coloc_res_tmp = coloc_res
 		coloc_res_tmp$split_column = ""
 		if(!("split_factors" %in% names(strat)))
 		{
 			coloc_res_tmp$split_column = "no-split"
+			print("Plotting without stratification")
+		} else
+		{
+			print(sprintf("Stratifying by %s", strat$split_factors))
 		}
+
 		for (column in strat$split_factors)	
 		{
 			if (sum(coloc_res_tmp$split_column != "") == 0)
@@ -62,8 +67,6 @@ make_heatmaps = function(config_file, input_file, output_directory)
 		# Do collapsing of certain GWAS into a single trait
 	        # if desired
 
-		coloc_res_tmp$gwas_label = coloc_res_tmp[[config[["gwas_column"]]]]
-
 		if ("gwas_remapping" %in% names(strat))
 		{
 			coloc_res_tmp$gwas_label = as.character(coloc_res_tmp$gwas_label)
@@ -78,16 +81,15 @@ make_heatmaps = function(config_file, input_file, output_directory)
 		{
 			for (bl in strat$gwas_blacklist)
 			{
-				coloc_res_tmp = coloc_res_tmp[coloc_res_tmp$gwas_label != bl,]
-				strat$gwas_remapping$new_order = strat$gwas_remapping$new_order[strat$gwas_remapping$new_order != bl]
+				coloc_res_tmp = coloc_res_tmp %>% filter(gwas_label != bl)
 			}
-			coloc_res_tmp$gwas_label = factor(x=coloc_res_tmp$gwas_label, levels=strat$gwas_remapping$new_order)
+			coloc_res_tmp$gwas_label = factor(x=coloc_res_tmp$gwas_label)
 		}
 
-		coloc_res_tmp = collapse_axis_factors(coloc_res_tmp)
-
+		coloc_res_tmp = collapse_axis_factors(coloc_res_tmp, config)
+		
 		# Classify the coloc results to determine what color they'll be in the plot
-		coloc_res_tmp$coloc_class = get_heatmap_classes(coloc_res_tmp)
+		coloc_res_tmp$coloc_class = get_heatmap_classes(coloc_res_tmp, config)
 
 		# Find locus-gene pairs with no coloc at all
 		# Label rows as "blank" if they have no matches, so we can leave them out of plots
@@ -118,6 +120,7 @@ make_heatmaps = function(config_file, input_file, output_directory)
 
 		coloc_res_tmp = coloc_res_tmp %>% arrange(y_factor)
 
+
 		if (config$cluster == "True")
 		{
 			# Binarize cells into colocalize or non-colocalized
@@ -137,8 +140,10 @@ make_heatmaps = function(config_file, input_file, output_directory)
 		}
 
 		### Plot coloc results
-		plot_heatmap(coloc_res_tmp, strat)
+		plot_heatmap(coloc_res_tmp, strat, config)
 	}
+
+	system(sprintf("touch %s", completion_indicator))
 
 }
 
@@ -159,37 +164,31 @@ plot_coloc_results_function=function(data){
           legend.box = "vertical", 
           legend.text = element_text(size=15), 
           legend.title = element_text(size = 12)) +   
-    guides(color=guide_legend(title = "", nrow = 2)) + 
+	  guides(color=FALSE) + 
     scale_x_discrete(drop=FALSE)
   return(plot)
 }
 
-get_coloc_results = function(coloc_file)
+get_coloc_results = function(coloc_file, config)
 {
 	# Read coloc results
 	coloc_res=as.data.frame(fread(file = coloc_file, sep = '\t', header = T, check.names = F))
-
+	
 	# Identify the QTL type and tissue for each coloc test
-	coloc_res$qtl_type = coloc_res[[config[["qtl_type"]]]]
-	coloc_res$tissue = coloc_res[[config[["qtl_tissue"]]]]
-
+	coloc_res$qtl_type = coloc_res[[config[["type_column"]]]]
+	coloc_res$tissue = coloc_res[[config[["tissue_column"]]]]
+	coloc_res$gwas_label = coloc_res[[config[["gwas_column"]]]]
+	
 	# If tissue order not specified, just do it alphabetically
 	if (!("tissue_order" %in% names(config))){
 		config$tissue_order = sort(coloc_res$tissue)
 	}
 	coloc_res$tissue = factor(x=coloc_res$tissue, levels=config$tissue_order)
 
-	# Label the GWAS'es with short and readable tags
-	coloc_res$gwas_label = ""
-	for (file in names(config$gwas_label))
-	{
-		coloc_res$gwas_label[coloc_res$base_gwas_file == file] = config$gwas_labels[[file]]
-	}
-
 	# If tissue order not specified, just do it alphabetically
 	if (!("gwas_order" %in% names(config))){
 		config$gwas_order = sort(coloc_res$gwas_label)
-	}i
+	}
 	coloc_res$gwas_label = factor(x=coloc_res$gwas_label, levels=config$gwas_order)
 
 	if (("label_individual_cells" %in% names(config)) && (config$label_individual_cells == "True"))
@@ -214,21 +213,21 @@ get_coloc_results = function(coloc_file)
 
 put_scores_in_cells = function(coloc_res, config)
 {
-	# Annotate results by significance of GWAS and eQTL hits
+	# Annotate results with coloc scores
+	# Will require further customization for any scores that aren't percentage based like CLPP or H4PP
 
 	coloc_res_tmp = coloc_res
 	coloc_res_tmp$cross = as.character(round(coloc_res_tmp$score, 2) * 100)
 	coloc_res_tmp$cross_col = "black"
-	# NOTE: in the long term we don't want this to be hard-coded
-	coloc_res_tmp$cross_col[coloc_res_tmp$score > config$colocalization_threshold_score] = "white"
+	coloc_res_tmp$cross_col[coloc_res_tmp$coloc_status == "coloc"] = "white"
 
 	return(coloc_res_tmp)
 } 
 
-plot_heatmap = function(coloc_res, strat)
+plot_heatmap = function(coloc_res, strat, config)
 {
 	out_sub_folder = strat$out_dir
-	dir.create(paste0(plot_out_dir, "/", out_sub_folder), recursive = TRUE, showWarnings=FALSE)
+	dir.create(paste0(config$output_directory, "/", out_sub_folder), recursive = TRUE, showWarnings=FALSE)
 	if ("constrain_split" %in% names(strat))
 	{
 		splits = strat$constrain_split
@@ -244,7 +243,11 @@ plot_heatmap = function(coloc_res, strat)
 
 		tmp_data=coloc_res %>% 
 			filter(coloc_res[["split_column"]] == split_col)
-		print(dim(tmp_data))
+		
+		if (dim(tmp_data)[1] == 0)
+		{
+			next
+		}
 
 		row_count = length(unique(tmp_data$y_factor))
 
@@ -300,44 +303,39 @@ plot_heatmap = function(coloc_res, strat)
 			}
 			plot
 
-			ggsave(filename = paste0(plot_out_dir, '/', out_sub_folder, '/CLPP_group_',split_col,'.part', chunk, '.pdf'), plot = plot, width = y_margin_approx_size+(col_width*num_cols), height = x_margin_approx_size+(row_height*num_rows), limitsize = F)
+			ggsave(filename = paste0(config$output_directory, '/', out_sub_folder, '/CLPP_group_',split_col,'.part', chunk, '.pdf'), plot = plot, width = y_margin_approx_size+(col_width*num_cols), height = x_margin_approx_size+(row_height*num_rows), limitsize = F)
 		}
 	}
 }
 
-get_heatmap_classes = function(coloc_res)
+get_heatmap_classes = function(coloc_res, config)
 {
-	threshold = 0.35
-
-	# TODO: I need to generalize this to other things beyond eqtl and sqtl
-	# Label each locus with a QTL type, to be used for determining colors later
-	classes = sapply(1:dim(coloc_res)[1],
-	      function(x)
+        get_coloc_type = function(qtl_type, coloc_status, x_factor, y_factor)
+	{
+		qtl_type = tolower(qtl_type)
+		#print(qtl_type)
+		#print(sum(qtl_type == "eqtl"))
+	      if ((sum((qtl_type == "eqtl") & (coloc_status == "coloc")) > 0) &&
+		      (sum((qtl_type == "sqtl") & (coloc_status == "coloc")) > 0))
 	      {
-		      tmp = coloc_res[x,]
-		      matches = coloc_res[(coloc_res$x_factor == tmp$x_factor) & (coloc_res$y_factor == tmp$y_factor),]
-
-		      # There are quite a few cases to test for
-		      if ((sum((matches$qtl_type == "eqtl") & (matches$score >= threshold)) > 0) &&
-			      (sum((matches$qtl_type == "sqtl") & (matches$score >= threshold)) > 0))
-		      {
-			      return("both")
-		      }
-		      if ((sum((matches$qtl_type == "eqtl") & (matches$score >= threshold)) > 0) &&
-			      (sum((matches$qtl_type == "sqtl") & (matches$score >= threshold)) == 0))
-		      {
-			      return("eqtl")
-		      }
-		      if ((sum((matches$qtl_type == "eqtl") & (matches$score >= threshold)) == 0) &&
-			      (sum((matches$qtl_type == "sqtl") & (matches$score >= threshold)) > 0))
-		      {
-			      return("sqtl")
-		      }
+		      return("both")
 	      }
-	)
+	      if ((sum((qtl_type == "eqtl") & (coloc_status == "coloc")) > 0) &&
+		      (sum((qtl_type == "sqtl") & (coloc_status == "coloc")) == 0))
+	      {
+		      return("eqtl")
+	      }
+	      if ((sum((qtl_type == "eqtl") & (coloc_status == "coloc")) == 0) &&
+		      (sum((qtl_type == "sqtl") & (coloc_status == "coloc")) > 0))
+	      {
+		      return("sqtl")
+	      }
+	      return("none")
+        }
+	coloc_types = coloc_res %>% group_by(x_factor, y_factor) %>% summarize(coloc_class = get_coloc_type(qtl_type, coloc_status, x_factor, y_factor))
 
-	coloc_res$coloc_class = classes
-	
+	coloc_res = full_join(coloc_res, coloc_types, by = c("x_factor", "y_factor"))
+
 	coloc_res$coloc_class=factor(x = coloc_res$coloc_class, 
 	levels=c("none", 
 		 "sqtl",  
@@ -345,9 +343,9 @@ get_heatmap_classes = function(coloc_res)
 		 "both"))
 }
 
-collapse_axis_factors = function(coloc_file)
+collapse_axis_factors = function(coloc_res_tmp, config)
 {
-	coloc_res = coloc_file
+	coloc_res = coloc_res_tmp
 
 	if ("locus_selection_list" %in% names(config))
 	{
@@ -393,19 +391,11 @@ collapse_axis_factors = function(coloc_file)
 	return(coloc_res)
 }
 
-load_results_file = function(config)
-{
-	d = read.table(file=config$input_file, header=TRUE, sep="\t")
-
-	return(d)
-}
-
-
-
 args = commandArgs(trailingOnly=TRUE)
 
 config_file = args[1]
 input_file = args[2]
 output_directory = args[3]
+completion_indicator = args[4]
 
-make_heatmaps(config_file, input_file, output_directory)
+make_heatmaps(config_file, input_file, output_directory, completion_indicator)

@@ -148,7 +148,7 @@ load_post_hoc_filter_input_file = function(config)
 {
 	t = read.table(config$input_file, header=TRUE, stringsAsFactors=FALSE)
 
-	t = t %>% select(ref_snp, qtl_file, feature, n_snps, neg_log_gwas_pval, neg_log_qtl_pval, gwas_file, score)
+	t = t %>% select(ref_snp, qtl_file, feature, n_snps, neg_log_gwas_pval, neg_log_qtl_pval, gwas_file, score, ensembl)
 
 	return(t)	
 }

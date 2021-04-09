@@ -97,11 +97,12 @@ rule make_heatmaps:
 	input:
 		"output/classify_results/{study}_colocalization_results.txt"
 	output:
-		"output/make_heatmaps/{study}"
+		"output/make_heatmaps/{study}_completion_indicator.tmp"
 	params:
-		config = "config/{study}.config"
+		config = "config/{study}.config",
+		out_base = "output/make_heatmaps/{study}"
 	shell:
-		"Rscript tools/make_heatmaps/make_heatmaps.R {params.config} {input} {output}"
+		"Rscript tools/make_heatmaps/make_heatmaps.R {params.config} {input} {params.out_base} {output}"
 
 rule plot_category_bars:
 	input:

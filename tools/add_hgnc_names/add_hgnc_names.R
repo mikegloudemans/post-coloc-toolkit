@@ -70,6 +70,10 @@ add_hgnc_names = function(config_file, input_file, output_file)
 	
 	# Combine HGNC table with results table
 	results = merge(genes, results, by="ensembl", all.y=TRUE)
+	results$hgnc = as.character(results$hgnc)
+	results$ensembl = as.character(results$ensembl)
+	results$hgnc[is.na(results$hgnc)] = results$ensembl[is.na(results$hgnc)]
+	results$hgnc[results$hgnc == ""] = results$ensembl[results$hgnc == ""]
 
 	write.table(results, config$output_file, col.names=TRUE, row.names=FALSE, sep="\t", quote=FALSE)
 }
@@ -91,12 +95,12 @@ load_results_file_for_hgnc = function(config)
 	data = read.table(file=config$input_file, header=TRUE)
 
 	# Quick input check
-	if (!("feature" %in% colnames(data)))
+	if (!("ensembl" %in% colnames(data)))
 	{
-		stop("input error: the input coloc results table must have a 'feature' column showing Ensembl IDs")
+		stop("input error: the input coloc results table must have an 'ensembl' column showing Ensembl IDs")
 	}
 
-	data$ensembl = substring(data$feature, 1, 15) 
+	data$ensembl = substring(data$ensembl, 1, 15)
 
 	return(data)
 }
