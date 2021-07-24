@@ -2,7 +2,6 @@
 .snakemake
 data/cadd
 data/dbsnp
-data/hgnc
 data/ld
 data/other-cadd
 data/pre_coloc_results

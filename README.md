@@ -16,10 +16,12 @@ from _any_ GWAS and/or QTL study, with all key parameters optionally overridden 
 user. So, if you find ways in which the pipeline is incompatible with your own pipeline,
 please feel free to a pull request, so that we might integrate your changes.
 
-## Installation
+## Installation and demo
 
 This pipeline is implemented using `snakemake`. 
-TODO TODO
+TODO TODO how to install
+
+How to run the demo
 
 ## Getting started
 
@@ -140,9 +142,18 @@ The following columns are required in the file, and must be denoted in a header 
 column.
 * `ensembl`: May be the same as `feature`, but this column maps the feature to a specific Ensembl gene.
 
-## Other required input files
+## Included input and data files
 
-[A few files that are needed for doing lookups and stuff...]
+A few subfolders of the `data` directory containing small text files are included as part of the repository
+(you don't need to do anything to use them by default):
+
+* `data/hgnc/ensembl_to_hgnc.txt` is a mapping of Ensembl IDs to HGNC gene IDs. You can substitute this file
+	with your own mapping if you'd like; see the section on `add_hgnc_names` to learn more.
+* `data/ldetect` contains mappings of genomic intervals to consistent locus numbers, with one file for the hg19 build
+	and another for hg38. These intervals were determined with LDetect in EUR populations (Berisa & Pickrell 2016).
+	Custom locus definitions or loci derived from other populations can be substituted here; however, all genomic
+	positions must fall within one and only one locus for a mapping to be valid.
+* `data/coloc_results` contains the results from a few colocalization runs used as examples and for the demos.
 
 ## Individual tool parameters
 
