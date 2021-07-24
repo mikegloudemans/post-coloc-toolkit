@@ -65,16 +65,6 @@ Group nearby SNPs into discrete loci, and assign each group a locus number.
 Organize loci by number of candidate genes and colocalizations, tissue(s) of colocalization,
 trait(s) of colocalization, or other categorical filters to aid in gene prioritization.
 
-### get-ld-buddies
-
-For each seed SNP (usually a GWAS lead SNP) used for colocalization testing, get a list of
-all SNPs in LD (R^2 > 0.8), representing other potentially causal SNPs at the locus.
-
-### get-vep-consequences
-
-Get the VEP predicted effects of every lead variant or LD buddy of a lead variant.
-This may be useful for hypothesizing about possible mechanisms at any given locus. 
-
 ### make-heatmaps
 
 Make heatmaps in the style of (paper TBD...), illustrating colocalization results across
@@ -554,8 +544,260 @@ The allowable criteria for this type of rule are the following:
 * `contains_all`: Passes filter if the `column` contains colocalizations for all of the fields in this list, and maybe others.
 * `contains_some`: Passes filter if the `column` contains colocalizations for at least one of the fields in this list, but not necessarily all.
 * `contains_none`: Passes filter if the `column` contains no colocalizations for any of the fields in this list.
-* `contains_only`: Passes filter if the `column` contains no colocalizations for any fields except those in this list, but not necessarily some or even any of the fields in this list.
+* `contains_only`: Passes filter if the `column` contains no colocalizations for any fields except those in this list, but not necessarily any colocalization for all or even any of the fields in this list.
 
 #### Example 1: Tissue specificity
 
+In this example, we use the `contains_exactly` keyword to identify loci that only have colocalizations 
+in one tissue and no others. All other loci having colocalizations but not matching a particular will be labeled "Shared",
+the last rule. Note that all loci in other categories also match the criteria for the "Shared" category, but they
+will be assigned to those other categories instead because the "Shared" category is listed last and therefore is of
+the lowest priority.
+
+There is also one additional category that includes loci with both subcutaneous _and_ visceral adipose colocalizations,
+but no colocalizations in any other tissues.
+
+```
+{
+        "classify_results":
+        {
+                "rules" :
+                {
+                        "step2_tissue_sorting":
+                        {
+                                "type": "specificity",
+                                "column": "qtl_tissue",
+                                "categories":
+                                [
+                                        {
+                                                "class_name": "AdpS",
+                                                "contains_exactly":
+                                                [
+                                                        "Subcutaneous-Adipose"
+                                                ]
+                                        },
+                                        {
+                                                "class_name": "AdpV",
+                                                "contains_exactly":
+                                                [
+                                                        "Visceral-Adipose"
+                                                ]
+                                        },
+                                        {
+                                                "class_name": "AdpS+V",
+                                                "contains_exactly":
+                                                [
+                                                        "Subcutaneous-Adipose",
+                                                        "Visceral-Adipose"
+                                                ]
+                                        },
+                                        {
+                                                "class_name": "Musk",
+                                                "contains_exactly":
+                                                [
+                                                        "Skeletal-Muscle"
+                                                ]
+                                        },
+                                        {
+                                                "class_name": "Liver",
+                                                "contains_exactly":
+                                                [
+                                                        "Liver"
+                                                ]
+                                        },
+                                        {
+                                                "class_name": "Pancreas",
+                                                "contains_exactly":
+                                                [
+                                                        "Pancreas"
+                                                ]
+                                        },
+                                        {
+                                                "class_name": "Shared"
+                                        }
+                                ]
+                        }
+		}
+	}
+}
+```
+		
 #### Example 2: Prioritizing specific traits
+
+In contrast with the previous example, in which none of the category definitions but the "Shared" category
+overlap one another, in this example a single loci could in principle meet the criteria for all
+the categories, having at least one colocalization in each of 5 different defined priority groups of
+traits. However, the order in which the traits are listed means that the "MI" and "ISI" colocalizations
+will have the highest priority, followed by "T2D", "FG", and "FI" colocalizations, and all the way
+down to "BMI" colocalizations, which will be classified as such only if there are no other colocalizations
+with higher-priority traits.
+
+```
+{
+	"classify_results":
+	{
+		"rules":
+		{
+                        "step3_gwas_sorting":
+                        {
+                                "type": "specificity",
+                                "column": "gwas_short_trait",
+                                "categories":
+                                [
+                                        {
+                                                "class_name": "IR",
+                                                "contains_some":
+                                                [
+                                                        "MI",
+                                                        "ISI"
+                                                ]
+                                        },
+                                        {
+                                                "class_name": "T2D-FG-FI",
+
+                                                "contains_some":
+                                                [
+                                                        "T2D",
+                                                        "FG",
+                                                        "FI"
+                                                ]
+                                        },
+                                        {
+                                                "class_name": "WHR",
+                                                "contains_some":
+                                                [
+                                                        "WHR"
+                                                ]
+                                        },
+                                        {
+                                                "class_name": "TG-HDL",
+                                                "contains_some":
+                                                [
+                                                        "TG",
+                                                        "HDL"
+                                                ]
+                                        },
+                                        {
+                                                "class_name": "BMI",
+                                                "contains_some":
+                                                [
+                                                        "BMI"
+                                                ]
+                                        }
+                                ]
+                        }
+                }
+        }
+}
+```
+
+Using these rules and criteria, it is possible to define a wide variety of schema for placing
+loci into custom, meaningfully different categories.
+
+### `make_heatmaps`
+
+The tool you've been waiting for! Visualize your colocalization results across dimensions in a heatmap using the 
+locus numbers and categories you've defined in the previous steps.
+
+Typically, each row of the heatmap will contain results for a single gene, with genes grouped logically
+by locus number. Each column will correspond to a typical [tissue x trait] combination, with all
+possible combinations represented in their own row. The colors of heatmap entries will then indicate
+whether a particular combination of gene, tissue, and trait were tested, and whether they colocalized
+for eQTLs, sQTLs, both, or neither. Currently the heatmap is tool is coded to recognize "eqtl" and "sqtl"
+as valid QTL types for colocalization tests, although it could easily be modified to include other QTL types
+and combinations as well. Similarly, although this format naturally lends itself to depicting the intersection
+of tissues and traits on the x-axis, it would also be possible, for example, to substitute other natural QTL
+contexts such as ancestry of the QTL individual in place of the QTL tissue field.
+
+The required top-level parameters for generating a heatmap are as follows:
+* `gwas_column`: The header entry for the column that indicates which trait was tested. If custom text is desired
+	for plotting axis labels, this column can be defined using a mapping in the `mutate_columns` step.
+* `tissue_column`: The header entry for the column that indicates which tissue was tested for QTLs.
+* `type_column`: The header entry for the column that indicates which QTL type (eQTL or sQTL) was tested.
+
+The following top-level parameters may be optionally specified to customize the output format.
+* `tissue_order`: A list showing the order in which tissues should be displayed in the heatmap. These values 
+	should correspond to the values contained in `tissue_column`.
+* `gwas_order`: A list showing the order in which GWAS traits should be displayed in the heatmap. These values
+        should correspond to the values contained in `gwas_column`.
+* `cluster`: If `"True"`, perform hierarchical clustering to order the rows of the results heatmap rather than
+	grouping them by locus. NOTE: This may not currently work as expected; further troubleshooting is needed.
+* `put_scores_in_cells`: If `"True"`, put a numerical value in each cell of the heatmap indicating the colocalization
+	score as a percentage. Works best for scores that are naturally interpretable as probabilities of colocalization,
+	between 0 and 1.
+* `rows_per_page`: If a heatmap contains more than this many rows, the additional rows will be extended on to another page.
+* `y_axis_collapse`: If set to `"genes"`, then all genes at each locus are collapsed into a single row, with the new row
+	entries representing the results at the locus level rather than the gene level. Default setting is "none".
+* `x_axis_collapse`: If set to `"tissues"`, all columns (tissues) for each _GWAS trait_ will be collapsed into a single column,
+	with the new column representing the results for the GWAS trait across all tissues. If set to `"gwas"`, all columns (GWAS traits)
+	for each _tissue_ will be collapsed into a single column, with the new column representing the results for the tissue
+	across all GWAS traits. If set to `"tissues-gwas"`, all columns across all tissues _and_ all GWAS traits will be collapsed
+	into just one column, with the new column representing the gene's or locus's colocalization status across every tested
+	combination of traits and tissues. Default setting is "none".
+* `locus_selection_list`: Optionally, a list of locus numbers. The tool will output results only for locus numbers contained in this list.
+* `gene_selection_list`: Optionally, a list of Ensembl gene IDs. The tool will output results only for genes contained in this list.
+
+Finally, an additional parameter `file_strata` is required, containing a list of objects / dictionaries.
+For each object, a complete set of output heatmaps will be generated, but the specifications with further
+detail how each plot is to be arranged.
+
+Each object in `file_strata` must contain the following parameters:
+* `out_dir`: The output directory for the heatmaps, either as a path relative to the working directory
+	or as an absolute path.
+* `concise`: If `"True"`, remove all genes from the output that were tested but had no colocalizations.
+	If `"False"`, all candidate genes overlapping GWAS loci will be included, even if they had no 
+	colocalization under any tested condition.
+
+Each object in `file_strata` can also optionally contain the parameters:
+* `split_factors`: A list of column headers on which to sort the output heatmaps. For example,
+	in the second of the three objects in the `file_strata` for the example config file below,
+	loci in the results will be sorted by tissue-specificity, and an individual heatmap will be output
+	containing each category of tissue-specific loci. Generally, this field will contain one of the
+	columns created by the `classify_results` tool.
+* `constrain_split`: Optionally, a list of allowable values for the column defined with `split_factors`.
+	All other values in this column will be removed.
+* `gwas_blacklist`: A list of values for `gwas_column` that should be excluded from the output heatmap.
+
+#### Example
+
+This example from `config/ir.config` creates three different sets of heatmaps: one arranged by the
+number of candidate and colocalized genes, one arranged by tissue specificity, and one arranged by the
+priority level of the highest-priority traits that colocalized for a locus.
+
+```
+{
+        "make_heatmaps":
+        {
+                "gwas_column": "gwas_short_trait",
+                "tissue_column": "qtl_tissue",
+                "type_column": "qtl_type",
+                "tissue_order": ["Subcutaneous-Adipose", "Visceral-Adipose",  "Skeletal-Muscle", "Liver", "Pancreas"],
+                "gwas_order": ["MI", "ISI", "FI", "FG", "T2D","WHR","HDL","TG","BMI"],
+                "cluster": "False",
+                "put_scores_in_cells": "True",
+                "y_axis_collapse": "none",
+                "x_axis_collapse": "none",
+                "file_strata":
+                [
+                        {
+                                "out_dir": "concise/step1/",
+                                "split_factors": ["step1_coloc_sorting"],
+                                "concise": "True",
+                                "gwas_blacklist": ["ISI"]
+                        },
+                        {
+                                "out_dir": "concise/step2/",
+                                "split_factors": ["step2_tissue_sorting"],
+                                "concise": "True",
+                                "gwas_blacklist": ["ISI"]
+                        },
+                        {
+                                "out_dir": "concise/step3/",
+                                "split_factors": ["step3_gwas_sorting"],
+                                "concise": "True",
+                                "gwas_blacklist": ["ISI"]
+                        }
+                ]
+	}
+}
+```

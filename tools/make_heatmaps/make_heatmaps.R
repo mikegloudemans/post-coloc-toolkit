@@ -26,9 +26,9 @@ make_heatmaps = function(config_file, input_file, output_directory, completion_i
 	config$input_file = input_file
 	config$output_directory = output_directory
 	
-	if ("chunk_size" %in% names(config))
+	if ("rows_per_page" %in% names(config))
 	{
-		chunk_size = as.numeric(config$chunk_size)
+		chunk_size = as.numeric(config$rows_per_page)
 	}
 
 	# Load results table
@@ -64,19 +64,6 @@ make_heatmaps = function(config_file, input_file, output_directory, completion_i
 		}
 		coloc_res_tmp$split_column = factor(coloc_res_tmp$split_column)
 
-		# Do collapsing of certain GWAS into a single trait
-	        # if desired
-
-		if ("gwas_remapping" %in% names(strat))
-		{
-			coloc_res_tmp$gwas_label = as.character(coloc_res_tmp$gwas_label)
-			for (gwas in names(strat$gwas_remapping$remaps))
-			{
-				coloc_res_tmp$gwas_label[coloc_res_tmp$gwas_label == gwas] = strat$gwas_remapping$remaps[[gwas]]
-			}
-			coloc_res_tmp$gwas_label = factor(x=coloc_res_tmp$gwas_label, levels=strat$gwas_remapping$new_order)
-		}
-
 		if ("gwas_blacklist" %in% names(strat))
 		{
 			for (bl in strat$gwas_blacklist)
@@ -108,7 +95,7 @@ make_heatmaps = function(config_file, input_file, output_directory, completion_i
 		}
 
 		# Remove rows (gene-locus pairs) with no colocs at all, if desired
-			if (strat$concise == "True")
+		if (lower(strat$concise) == "true")
 		{
 			coloc_res_tmp = coloc_res_tmp %>% filter(blanks != "blank")
 		}
@@ -121,7 +108,7 @@ make_heatmaps = function(config_file, input_file, output_directory, completion_i
 		coloc_res_tmp = coloc_res_tmp %>% arrange(y_factor)
 
 
-		if (config$cluster == "True")
+		if (lower(config$cluster) == "true")
 		{
 			# Binarize cells into colocalize or non-colocalized
 			coloc_res_tmp$clust_stat = 0
@@ -272,7 +259,7 @@ plot_heatmap = function(coloc_res, strat, config)
 			num_vert_bars = num_cols / num_tissues - 1
 			num_rows = length(unique(tmp_chunk$y_factor))
 
-			if ((("cluster" %in% names(config)) && (config$cluster == "True")) ||
+			if ((("cluster" %in% names(config)) && (lower(config$cluster) == "true")) ||
 			    (("y_axis_collapse" %in% names(config)) && (config$y_axis_collapse == "genes")))
 			{
 				# It doesn't make sense to separate loci if they're clustered
