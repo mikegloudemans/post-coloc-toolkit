@@ -176,7 +176,6 @@ performing any filtering based on these.
 All parameters:
 
 #### `colocalization_threshold`
-
 A value indicating what level of the `score` column will indicate a colocalization when exceeded.
 
 #### `kept_gwas`
@@ -196,7 +195,6 @@ Optionally, a list of values of the `qtl_file` column that should be removed in 
 (All other values will be retained in the output.)
 
 #### `gwas_pval_threshold`
-
 An object indicating a "standard" maximum GWAS p-value to retrain and, optionally, "exceptions" of
 alternate p-value thresholds for other traits (this latter option may be used if certain traits
 have disproportionately high or low power to detect significant hits, but should
