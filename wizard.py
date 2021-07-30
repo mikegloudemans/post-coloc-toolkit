@@ -4,6 +4,39 @@ import numpy as np
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
+default_num_colocs_rule = {
+                                "type": "num_colocs",
+                                "categories":
+                                {
+                                        "one_candidate_one_coloc":
+                                        {
+                                                "num_candidates_equals": "1",
+                                                "num_colocs_equals": "1"
+                                        },
+                                        "one_candidate_no_coloc":
+                                        {
+                                                "num_candidates_equals": "1",
+                                                "num_colocs_equals": "0"
+                                        },
+                                        "multi_candidate_one_coloc":
+                                        {
+                                                "num_candidates_greater_than": "1",
+                                                "num_colocs_equals": "1"
+                                        },
+                                        "multi_candidate_multi_coloc":
+                                        {
+                                                "num_candidates_greater_than": "1",
+                                                "num_colocs_greater_than": "1"
+                                        },
+                                        "multi_candidate_no_coloc":
+                                        {
+                                                "num_candidates_greater_than": "1",
+                                                "num_colocs_equals": "0"
+                                        }
+                                }
+                        }
+
+
 ####################################################################
 # post-colocalization Wizard!
 ####################################################################
@@ -391,8 +424,125 @@ def main():
 	print("Awesome, we're through configuring the mutate_columns tool.\n"
 
 	#############################################
-	# Part 3: Add HGNC naems
+	# Part 3: Add HGNC names
 	#############################################
+
+	print("Now we'll configure step 3: add_hgnc_names...\n")
+
+	config["add_hgnc_names"] = {}
+
+	yesno = get_yes_no("A default file for mapping Ensembl gene IDs to HGNC gene ids is located at 'data/hgnc/ensembl_to_hgnc.txt'. You can specify a different mapping file if you want, though. Do you want to use a different mapping file? (yes/no)\n\n")
+
+	if yesno:
+		while True:
+			inp = screen_input("Type the location of the file you'd like to use.\n\n")
+	
+			if not os.path.isfile(inp):
+				print("That file doesn't seem to exist, please try again. Be sure either to use an absolute path or to specify the path relative to the 'wizard.py' directory.\n\n")
+				continue
+
+			break
+
+			print("Great. The head of your file is as follows:")
+			with open(inp) as f:
+				for i in range(10):
+					print(f.readline().strip())
+
+			while True:
+				ensembl_col = screen_input("Please enter the 1-based index of the column containing the Ensembl gene IDs.\n\n")
+				try:
+					ensembl_col = int(ensembl_col)
+					break
+				except:
+					print("You'll need an integer value for this parameter.\n")
+
+			while True:
+				hgnc_col = screen_input("Please enter the 1-based index of the column containing the HGNC gene IDs.\n\n")
+				try:
+					hgnc_col = int(hgnc_col)
+					break
+				except:
+					print("You'll need an integer value for this parameter.\n")
+
+			header_yesno = get_yes_no("Great. One last thing: does your file have a header row? (yes/no)\n\n")
+
+			print("OK, so your mapping looks something like this...")
+
+			map_head = {}
+			with open(inp) as f:
+				if header_yesno:
+					f.readline()
+				for i in range(10):
+					data = f.readline().strip().split()
+					ensembl = data[ensembl_col+1]
+					hgnc = data[hgnc_col+1]
+					map_head[ensembl] = hgnc
+
+			pp.pprint(map_head)
+
+			done = get_yes_no("Does that look right? (yes/no)")
+
+			if not done:
+				persist = get_yes_no("Oops. We'll just drop this mapping then. Do you still want to specify an alternate gene mapping file? (yes/no)")
+				if persist:
+					continue
+
+			break
+
+	config["add_hgnc_names"]["header"] = header_yesno
+	config["add_hgnc_names"]["ensembl_col_index"] = ensembl_col
+	config["add_hgnc_names"]["hgnc_col_index"] = hgnc_col
+	config["add_hgnc_names"]["ensembl_to_hgnc_map_file"] = inp
+
+	config["add_hgnc_names"]["completed_wizard"] = "True"	
+
+	print("And that's all we need for the add_hgnc_names tool.\n")
+
+	#############################################
+	# Part 4: Assign locus numbers
+	#############################################
+	
+	print("The next step is a quick one...step 4: assign_locus_numbers.\n")
+
+	config["assign_locus_numbers"] = {}
+
+	build = "hg38" if get_yes_no("Just one question. Are you using the hg38 build? (yes/no)") else "hg19"
+
+	if build != "hg38":
+		print("OK, in that case we'll assume you're using hg19. If you're using a different build or you want to use a different locus partitioning than the fault, please check out the README file for details on how to do that.\n")
+
+	print("We're already finished with the assign_locus_numbers tool.")
+
+	config["assign_locus_numbers"]["genome_file"] = build
+	
+	config["assign_locus_numbers"]["completed_wizard"] = "True"
+
+	#############################################
+	# Part 5: Classify results
+	#############################################
+
+	config["classify_results"] = {}
+	config["classify_results"]["rules"] = {}
+
+	print("Now for the good stuff...part 5: classify_results.\n\nHere you decide how you want to slice and dice your results for your eventual heatmap(s).\n")
+
+	yesno = get_yes_no("One thing we can do is sort the loci by the number of candidate QTL genes, and the number remaining after colocalization. Do you want to make such a rule? (yes/no)")
+
+	if yesno:
+		print("Awesome, good choice. I'm going to suggest using the following rules, take a look and see if this fits your needs:")
+
+		pp.pprint(default_num_colocs_rule)
+
+		keep = get_yes_no("Do you want to add this classification rule for your GWAS loci? (yes/no)")
+
+		if not keep:
+			print("OK, no problem. In that case, if you still want to make a custom rule of this sort, please take a look at the README section on 'num_colocs' rules, which will show you the options for defining this kind of custom rule.")
+
+		else:
+			rule_name = screen_input("What do you want to call your rule? (If you don't know, you could just go with 'num_colocs'). This will be the name of the new column that indicates what type of locus each test falls into.\n\n")
+			config["classify_results"]["rules"][rule_name] = default_num_colocs_rule
+
+	yesno = get_yes_no("We can also make rules to classify results based on the presence or absence of colocalizations in specific tissues, traits, QTL types, or other criteria. Do you want to make such a rule? (yes/no)")
 
 def get_yes_no(message, part_config):
 
@@ -418,6 +568,7 @@ def screen_input(message, part_config):
 		sys.exit()
 
 	return(inp)
+
 
 main()
 
