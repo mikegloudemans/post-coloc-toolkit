@@ -1,14 +1,7 @@
+
 rule all:
 	input:
-		"none"
-
-# rule validate_config:
-# Figure out later how to validate it before it goes in...	
-
-# This might eventually become an optional step, but
-# for now we're just assuming it's mandatory
-
-# Filter down to the relevant files
+		expand("output/make_heatmaps/{study}_completion_indicator.tmp", study=config["name"])
 
 rule post_hoc_filter:
 	input:
@@ -44,7 +37,7 @@ rule add_hgnc_names:
 
 rule assign_locus_numbers:
 	input:
-		"output/add_rsids/{study}_colocalization_results.txt"
+		"output/add_hgnc_names/{study}_colocalization_results.txt"
 	output:
 		"output/assign_locus_numbers/{study}_colocalization_results.txt"
 	params:

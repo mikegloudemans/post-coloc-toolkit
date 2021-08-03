@@ -5,6 +5,10 @@ import pprint
 import json
 pp = pprint.PrettyPrinter(indent=4)
 
+def save_results(part_config):
+	with open(config_file, "w") as w:
+		json.dump(part_config, w, indent=4)
+
 def get_yes_no(message, part_config):
 
 	inp = screen_input(message, part_config)
@@ -381,9 +385,11 @@ def main():
 		config["post_hoc_filter"]["completed_wizard"] = "True"	
 
 		print("Awesome, we're through configuring the post_hoc_filter tool.\n")
-		
+
+		save_results(config)	
+	
 	else:	
-		print("\nStep 1: post_hoc_filter has already been configured...")
+		print("Step 1: post_hoc_filter has already been configured...")
 
 	if "mutate_columns" not in config or "completed_wizard" not in config["mutate_columns"] or config["mutate_columns"]["completed_wizard"] != "True":
 		#############################################
@@ -490,16 +496,16 @@ def main():
 				config["mutate_columns"]["mutations"].append(mapping)
 				print(f"\nAdded column remapping 'qtl_file':'{out_column}' to the list.\n")
 
-				header += out_column
-
 			yesno = get_yes_no("Do you want to add any other remappings for the other columns? (yes/no)\n\n", config)
 		
 		config["mutate_columns"]["completed_wizard"] = "True"	
 
 		print("Awesome, we're through configuring the mutate_columns tool.\n")
+		
+		save_results(config)	
 	
 	else:	
-		print("\nStep 2: mutate_columns has already been configured...")
+		print("Step 2: mutate_columns has already been configured...")
 	
 	if "add_hgnc_names" not in config or "completed_wizard" not in config["add_hgnc_names"] or config["add_hgnc_names"]["completed_wizard"] != "True":
 
@@ -513,38 +519,39 @@ def main():
 
 		yesno = get_yes_no("A default file for mapping Ensembl gene IDs to HGNC gene ids is located at 'data/hgnc/ensembl_to_hgnc.txt'. You can specify a different mapping file if you want, though. Do you want to use a different mapping file? (yes/no)\n\n", config)
 
+		header_yesno = "True"
+		ensembl_col = 1
+		hgnc_col = 3
 		if yesno:
 			while True:
-				inp = screen_input("Type the location of the file you'd like to use.\n\n", config)
+				inp = screen_input("\nType the location of the file you'd like to use.\n\n", config)
 		
 				if not os.path.isfile(inp):
 					print("That file doesn't seem to exist, please try again. Be sure either to use an absolute path or to specify the path relative to the 'wizard.py' directory.\n\n")
 					continue
 
-				break
-
-				print("Great. The head of your file is as follows:")
+				print("Great. The head of your file is as follows:\n")
 				with open(inp) as f:
 					for i in range(10):
 						print(f.readline().strip())
 
 				while True:
-					ensembl_col = screen_input("Please enter the 1-based index of the column containing the Ensembl gene IDs.\n\n", config)
+					ensembl_col = screen_input("\nPlease enter the 1-based index of the column containing the Ensembl gene IDs.\n\n", config)
 					try:
 						ensembl_col = int(ensembl_col)
 						break
 					except:
-						print("You'll need an integer value for this parameter.\n")
+						print("\nYou'll need an integer value for this parameter.")
 
 				while True:
-					hgnc_col = screen_input("Please enter the 1-based index of the column containing the HGNC gene IDs.\n\n", config)
+					hgnc_col = screen_input("\nPlease enter the 1-based index of the column containing the HGNC gene IDs.\n\n", config)
 					try:
 						hgnc_col = int(hgnc_col)
 						break
 					except:
 						print("You'll need an integer value for this parameter.\n")
 
-				header_yesno = get_yes_no("Great. One last thing: does your file have a header row? (yes/no)\n\n", config)
+				header_yesno = get_yes_no("\nGreat. One last thing: does your file have a header row? (yes/no)\n\n", config)
 
 				print("OK, so your mapping looks something like this...")
 
@@ -554,16 +561,16 @@ def main():
 						f.readline()
 					for i in range(10):
 						data = f.readline().strip().split()
-						ensembl = data[ensembl_col+1]
-						hgnc = data[hgnc_col+1]
+						ensembl = data[ensembl_col-1]
+						hgnc = data[hgnc_col-1]
 						map_head[ensembl] = hgnc
 
 				pp.pprint(map_head)
 
-				done = get_yes_no("Does that look right? (yes/no)", config)
+				done = get_yes_no("Does that look right? (yes/no)\n\n", config)
 
 				if not done:
-					persist = get_yes_no("Oops. We'll just drop this mapping then. Do you still want to specify an alternate gene mapping file? (yes/no)", config)
+					persist = get_yes_no("\nOops. We'll just drop this mapping then. Do you still want to specify an alternate gene mapping file? (yes/no)\n\n", config)
 					if persist:
 						continue
 
@@ -576,10 +583,12 @@ def main():
 
 		config["add_hgnc_names"]["completed_wizard"] = "True"	
 
-		print("And that's all we need for the add_hgnc_names tool.\n")
+		print("\nAnd that's all we need for the add_hgnc_names tool.\n")
+		
+		save_results(config)	
 	
 	else:	
-		print("\nStep 3: add_hgnc_names has already been configured...")
+		print("Step 3: add_hgnc_names has already been configured...")
 
 	if "assign_locus_numbers" not in config or "completed_wizard" not in config["assign_locus_numbers"] or config["assign_locus_numbers"]["completed_wizard"] != "True":
 
@@ -587,23 +596,25 @@ def main():
 		# Part 4: Assign locus numbers
 		#############################################
 		
-		print("The next step is a quick one...step 4: assign_locus_numbers.\n")
+		print("\nThe next step is a quick one...step 4: assign_locus_numbers.\n")
 
 		config["assign_locus_numbers"] = {}
 
-		build = "hg38" if get_yes_no("Just one question. Are you using the hg38 build? (yes/no)", config) else "hg19"
+		build = "hg38" if get_yes_no("Just one question. Are you using the hg38 build? (yes/no)\n\n", config) else "hg19"
 
 		if build != "hg38":
 			print("OK, in that case we'll assume you're using hg19. If you're using a different build or you want to use a different locus partitioning than the fault, please check out the README file for details on how to do that.\n")
 
-		print("We're already finished with the assign_locus_numbers tool.")
+		print("\nWe're already finished with the assign_locus_numbers tool.\n")
 
 		config["assign_locus_numbers"]["genome_file"] = build
 		
 		config["assign_locus_numbers"]["completed_wizard"] = "True"
+		
+		save_results(config)	
 
 	else:	
-		print("\nStep 4: assign_locus_numbers has already been configured...")
+		print("Step 4: assign_locus_numbers has already been configured...")
 
 	if "classify_results" not in config or "completed_wizard" not in config["classify_results"] or config["classify_results"]["completed_wizard"] != "True":
 
@@ -616,117 +627,131 @@ def main():
 
 		print("Now for the good stuff...part 5: classify_results.\n\nHere you decide how you want to slice and dice your results for your eventual heatmap(s).\n")
 
-		yesno = get_yes_no("One thing we can do is sort the loci by the number of candidate QTL genes, and the number remaining after colocalization. Do you want to make such a rule? (yes/no)", config)
+		yesno = get_yes_no("One thing we can do is sort the loci by the number of candidate QTL genes, and the number remaining after colocalization. Do you want to make such a rule? (yes/no)\n\n", config)
 
 		if yesno:
-			print("Awesome, good choice. I'm going to suggest using the following rules, take a look and see if this fits your needs:")
+			print("\nAwesome, good choice. I'm going to suggest using the following rules, take a look and see if this fits your needs:\n")
 
 			pp.pprint(default_num_colocs_rule)
 
-			keep = get_yes_no("Do you want to add this classification rule for your GWAS loci? (yes/no)", config)
+			keep = get_yes_no("\nDo you want to add this classification rule for your GWAS loci? (yes/no)\n\n", config)
 
 			if not keep:
-				print("OK, no problem. In that case, if you still want to make a custom rule of this sort, please take a look at the README section on 'num_colocs' rules, which will show you the options for defining this kind of custom rule.")
+				print("\nOK, no problem. In that case, if you still want to make a custom rule of this sort, please take a look at the README section on 'num_colocs' rules, which will show you the options for defining this kind of custom rule.\n")
 
 			else:
-				rule_name = screen_input("What do you want to call your rule? (If you don't know, you could just go with 'num_colocs'). This will be the name of the new column that indicates what type of locus each test falls into.\n\n", config)
+				rule_name = screen_input("\nWhat do you want to call your rule? (If you don't know, you could just go with 'num_colocs'). This will be the name of the new column that indicates what type of locus each test falls into.\n\n", config)
 				config["classify_results"]["rules"][rule_name] = default_num_colocs_rule
 
-		yesno = get_yes_no("We can also make 'specificity' rules to classify results based on the presence or absence of colocalizations in specific tissues, traits, QTL types, or other criteria. Do you want to make such a rule? (yes/no)", config)
+		yesno = get_yes_no("\nWe can also make 'specificity' rules to classify results based on the presence or absence of colocalizations in specific tissues, traits, QTL types, or other criteria. Do you want to make such a rule? (yes/no)\n\n", config)
 
-		# For each rule
-		while True:
+		if yesno:
 
-			column = screen_input(f"As a reminder, your columns are {header}. Which of these columns would you like to use to define your rule? (If you need information from more than one column, consider defining multiple separate rules, one at a time.)\n\n", config)
+			extended_header = header[:]
+			if "mutations" in config["mutate_columns"]:
+				for new_column in config["mutate_columns"]["mutations"]:
+					extended_header.append(new_column["out"])
 
-			if column not in header:
-				print("Sorry, that column doesn't seem to be in the header. Try again...\n\n")
-				continue
-
-			rule_name = screen_input("What do you want the name of your rule to be? (e.g. 'tissue-specificity')", config)
-
-			config["classify_results"]["rules"][rule_name] = {"type": "specificity", "column": column, "categories": []}
-
-			with open(coloc_file) as f:
-				column_vals = set([])
-				f.readline()
-				for line in f:
-					data = line.strip().split()
-					column_vals.add(data[header.index(column)])
-
+			# For each rule
 			while True:
 
-				cat_name = screen_input("What do you want the name of your next category to be? (e.g. 'adipose-specific') Note that categories will be prioritized in order of entry, if loci meet criteria for more than one category.", config)
+				column = screen_input(f"\nAs a reminder, your columns are {extended_header}. Which of these columns would you like to use to define your rule? (If you need information from more than one column, consider defining multiple separate rules, one at a time.)\n\n", config)
 
-				category = {"class_name": cat_name}
+				if column not in extended_header:
+					print("Sorry, that column doesn't seem to be in the header. Try again...\n\n")
+					continue
 
-				rule_types = ["contains_exactly", "contains_all", "contains_some", "contains_none", "contains_only"]
-				
+				rule_name = screen_input("\nWhat do you want the name of your rule to be? (e.g. 'tissue-specificity')\n\n", config)
+
+				config["classify_results"]["rules"][rule_name] = {"type": "specificity", "column": column, "categories": []}
+
+				if column in header:
+					with open(coloc_file) as f:
+						column_vals = set([])
+						f.readline()
+						for line in f:
+							data = line.strip().split()
+							column_vals.add(data[header.index(column)])
+				else:
+					# This column is only being created after mutations
+					mutated_column = [mc for mc in config["mutate_columns"]["mutations"] if mc["out"] == column][0]
+					column_vals = set(mutated_column["map"].values())
+
 				while True:
-					# Define rules one at a time, based on rules in that column...
-					print(f"Great. There are a few types of criteria you can define: {rule_types}. For more information about these criteria, please view the README.")
 
-					crit_type = screen_input("Which criterion type would you like to define next? (You can define more than one criterion for a single category.)", config)
+					cat_name = screen_input("\nWhat do you want the name of a category within this rule to be? (e.g. 'adipose-specific') Note that categories will be prioritized in order of entry, if loci meet criteria for more than one category.\n\n", config)
 
-					if crit_type not in header:
-						print("That isn't one of the valid types of criteria.")
-						continue
+					category = {"class_name": cat_name}
 
-					category[crit_type] = []
-
-					addition = screen_input(f"All right, now which values do you want this {crit_type} criterion to apply to? The possible values in this column are {sorted(list(column_vals))}\n\n", config)
+					rule_types = ["contains_exactly", "contains_all", "contains_some", "contains_none", "contains_only"]
 					
 					while True:
+						# Define rules one at a time, based on rules in that column...
+						print(f"\nThere are a few types of criteria you can define: {rule_types}. For more information about these criteria, please view the README.\n")
 
-						addition = screen_input("Enter one value:\n\n", config)
+						crit_type = screen_input("Which criterion type would you like to define next? (You can define more than one criterion for a single category.)\n\n", config)
 
-						if addition not in column_vals:
-							print("That isn't one of the valid column values.")
+						if crit_type not in rule_types:
+							print("\nThat isn't one of the valid types of criteria.\n")
 							continue
 
-						category[crit_type].append(addition)
+						category[crit_type] = []
 
-						print("The category definition right now:")
-						pp.pprint(category)
+						addition = print(f"All right, now which values do you want this {crit_type} criterion to apply to? The possible values in this column are {sorted(list(column_vals))}\n", config)
+						
+						while True:
 
-						yesno = get_yes_no("Do you want to add any other values to the list for this criterion? (yes/no)", config)
+							addition = screen_input("Enter one value:\n\n", config)
+
+							if addition not in column_vals:
+								print("That isn't one of the valid column values.")
+								continue
+
+							category[crit_type].append(addition)
+
+							print("\nThe category definition right now:\n")
+							pp.pprint(category)
+
+							yesno = get_yes_no("\nDo you want to add any other values to the list for this criterion? (yes/no)\n\n", config)
+							if not yesno:
+								break															
+
+						yesno = get_yes_no("\nDo you want to add any other criteria for this category? (yes/no)\n\n", config)
 						if not yesno:
-							break															
 
-					yesno = get_yes_no("Do you want to add any other criteria for this category? (yes/no)", config)
+							config["classify_results"]["rules"][rule_name]["categories"].append(category)
+							break
+
+					print("\nGreat. Your entire rule looks like this right now:\n")
+					pp.pprint(config["classify_results"]["rules"][rule_name])
+					
+					yesno = get_yes_no("\nDo you want to add any other categories in this rule? (yes/no)\n\n", config)
 					if not yesno:
 
-						config["classify_results"]["rules"][rule_name]["categories"].append(category)
+						reject = get_yes_no("\nOK, one more thing. If you've made a mistake on this rule, we can start over. Do you want to drop this rule from the config? (yes/no)\n\n", config)
+
+						if reject:
+							del config["classify_results"]["rules"][rule_name]
+							print("\nRule dropped.\n")
 						break
 
-				print("Great. Your entire rule looks like this right now:")
-				pp.pprint(config["classify_results"]["rules"][rule_name])
-				
-				yesno = get_yes_no("Do you want to add any other categories in this rule? (yes/no)", config)
-				if not yesno:
+				another_rule = get_yes_no("Now, do you want to add additional rule(s)?", config)
+						
+				if another_rule:
+					continue
 
-					reject = get_yes_no("OK, one more thing. If you've made a mistake on this rule, we can start over. Do you want to drop this rule from the config? (yes/no)", config)
-
-					if reject:
-						del config["classify_results"]["rules"][rule_name]
-
-					break
-
-			another_rule = get_yes_no("Now that you've made this rule, do you want to add any entirely different rule(s)?", config)
-					
-			if another_rule:
-				continue
-
-			break	
+				break	
 
 		config["classify_results"]["completed_wizard"] = "True"
 
 		print("We're now done configuring the classify_results tool.")
+		
+		save_results(config)	
 	
 	else:	
-		print("\nStep 5: classify_results has already been configured...")
+		print("Step 5: classify_results has already been configured...")
 
-	if "classify_results" not in config or "completed_wizard" not in config["classify_results"] or config["classify_results"]["completed_wizard"] != "True":
+	if "make_heatmaps" not in config or "completed_wizard" not in config["make_heatmaps"] or config["make_heatmaps"]["completed_wizard"] != "True":
 	
 		#############################################
 		# Part 6: Make heatmaps
@@ -829,14 +854,16 @@ def main():
 				continue
 
 			break
-	else:	
-		print("\nStep 6: make_heatmaps has already been configured...")
+		
+		save_results(config)	
 
-	print("Then that's it for the config wizard! If you want to change further details not included in this wizard, take a look at the README. Otherwise, you're all set to run the Snakemake pipeline!")
+	else:	
+		print("Step 6: make_heatmaps has already been configured...")
+
+	print("\nThat's it for the config wizard! If you want to change further details not included in this wizard, take a look at the README. Otherwise, you're all set to run the Snakemake pipeline.\n\n")
 
 	if config_file.replace("config/", "").replace(".config", "") != coloc_file.replace("data/coloc_results/", "").replace("_colocalization_results.txt", ""):
 		print("ALERT: For the pipeline to run, don't forget to rename your config or colocalization results file so that both have the same prefix (e.g. 'ir_colocalization_results.txt' and 'ir.config').")
-
 
 main()
 

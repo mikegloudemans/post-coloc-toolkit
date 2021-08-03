@@ -1,0 +1,11 @@
+name: cerberus
+dependencies:
+  - snakemake=6.0.0
+  - numpy=1.21.0
+
+  - r-base=4.0.2
+  - r-devtools=2.3.2
+  - r-dplyr=1.0.4
+  - r-ggplot2=3.3.3
+  - r-rjson=0.2.20
+

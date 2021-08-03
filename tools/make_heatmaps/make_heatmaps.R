@@ -95,7 +95,7 @@ make_heatmaps = function(config_file, input_file, output_directory, completion_i
 		}
 
 		# Remove rows (gene-locus pairs) with no colocs at all, if desired
-		if (lower(strat$concise) == "true")
+		if (tolower(strat$concise) == "true")
 		{
 			coloc_res_tmp = coloc_res_tmp %>% filter(blanks != "blank")
 		}
@@ -108,7 +108,7 @@ make_heatmaps = function(config_file, input_file, output_directory, completion_i
 		coloc_res_tmp = coloc_res_tmp %>% arrange(y_factor)
 
 
-		if (lower(config$cluster) == "true")
+		if (tolower(config$cluster) == "true")
 		{
 			# Binarize cells into colocalize or non-colocalized
 			coloc_res_tmp$clust_stat = 0
@@ -259,7 +259,7 @@ plot_heatmap = function(coloc_res, strat, config)
 			num_vert_bars = num_cols / num_tissues - 1
 			num_rows = length(unique(tmp_chunk$y_factor))
 
-			if ((("cluster" %in% names(config)) && (lower(config$cluster) == "true")) ||
+			if ((("cluster" %in% names(config)) && (tolower(config$cluster) == "true")) ||
 			    (("y_axis_collapse" %in% names(config)) && (config$y_axis_collapse == "genes")))
 			{
 				# It doesn't make sense to separate loci if they're clustered

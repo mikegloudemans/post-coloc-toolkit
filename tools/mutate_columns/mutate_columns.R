@@ -1,5 +1,5 @@
-require(rjson)
-require(dplyr)
+suppressWarnings(suppressMessages(require(rjson)))
+suppressWarnings(suppressMessages(require(dplyr)))
 
 ############################################################
 ### Create / mutate new column names for display

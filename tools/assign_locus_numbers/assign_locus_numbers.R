@@ -1,4 +1,4 @@
-require(rjson)
+suppressWarnings(suppressMessages(require(rjson)))
 
 ############################################################
 ### Cluster colocalization results into loci

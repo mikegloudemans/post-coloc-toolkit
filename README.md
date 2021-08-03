@@ -1,17 +1,22 @@
-# post-coloc-toolkit
+# _Cerberus_: The last labor of colocalization
 
 Created by Mike Gloudemans
 
 ## Summary
 
-This repository contains a suite of tools for exploring colocalization results.
+Running colocalization analysis involves many labors, and you've reached the final
+one: interpreting the results.
+
+_Cerberus_ is a suite of tools for exploring colocalization results,
+primarily focused on producing publication-ready heatmaps for visualization across
+traits, tissues, and QTL types.
 
 The tools were designed to work with results in the output format of the pipeline
 https://github.com/mikegloudemans/ensemble_colocalization_pipeline, but
-they will also work with the results of any quantitative gene prioritization pipeline 
+they also work with the results of any quantitative gene prioritization pipeline 
 if the appropriate column headers are included.
 
-The aim of this package, is to enable generalized use of these tools with results
+The aim of this package is to enable generalized use of these tools with results
 from _any_ GWAS and/or QTL study, with all key parameters optionally overridden by the
 user. So, if you find ways in which the pipeline is incompatible with your own pipeline,
 please feel free to a pull request, so that we might integrate your changes.
@@ -19,13 +24,47 @@ please feel free to a pull request, so that we might integrate your changes.
 ## Installation and demo
 
 This pipeline is implemented using `snakemake`. 
-TODO TODO how to install
 
-How to run the demo
+### Install `conda` environment  
+
+We'll use the package manager `conda` to create an environment with all the tools you'll need to run this toolkit. Because we're using `conda` for this, it won't affect the other packages existing on your system.
+
+Install `conda` (python3) if it is not already installed. The [miniconda installer](https://docs.conda.io/en/latest/miniconda.html) is a convenient way to do this. Then add a few channels:  
+```
+conda config --add channels defaults
+conda config --add channels bioconda
+conda config --add channels conda-forge
+```
+Create a new `conda` environment with the correct dependencies. This can take a while, so it is recommended to run this command in a `screen`/`tmux` session. It also requires \~20G of RAM:  
+```bash
+conda env create -f environment.yml
+```
+
+To be sure everything's running properly, you can now test it on our included example of type 2 diabetes and other insulin resistance-related traits.
+
+You'll first want to make sure you're in the top level of this project: the one containing this README.
+
+Then whenever running the pipeline, you'll need to first activate our custom conda environment:
+```
+conda activate cerberus
+```
+
+And then to run the demo, using the results in `data/coloc_results/ir_colocalization_results.txt` with the pre-made config file in `config/ir.config`, you can simply run
+
+```
+snakemake -j 1 --config name="ir"
+```
+
+To run this with another results file and config, e.g. `data/coloc_results/brain_colocalization_results.txt` and `config/brain.config`, you can simply switch the command to:
+
+```
+snakemake -j 1 --config name="brain"
+```
+
 
 ## Getting started
 
-The settings for this toolkit are defined within a single config file, which is specified as a command-line
+The settings for the _Cerberus_ toolkit are defined within a single config file, which is specified as a command-line
 parameter. Details on how to create such a file are given below in a separate section.
 
 The individual tools can be run independently, but most often you'll want to
@@ -115,8 +154,6 @@ python wizard.py
 ```
 
 and follow the directions given.
-
-^ NOTE: I have not yet completed this yet, so don't run `wizard.py` yet. Sorry.
 
 ## Input file format
 
