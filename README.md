@@ -7,8 +7,8 @@ Created by Mike Gloudemans
 Running colocalization analysis involves many labors, and you've reached the final
 one: interpreting the results.
 
-_Cerberus_ is a suite of tools for exploring colocalization results,
-primarily focused on producing publication-ready heatmaps for visualization across
+_Cerberus_ is a suite of tools for exploring colocalization results
+and producing publication-ready heatmaps for visualization across
 traits, tissues, and QTL types.
 
 The tools were designed to work with results in the output format of the pipeline
