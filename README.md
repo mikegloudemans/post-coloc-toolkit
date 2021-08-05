@@ -1,4 +1,4 @@
-# _Cerberus_: The last labor of colocalization
+# _Cerberus_: A post-colocalization toolkit
 
 Created by Mike Gloudemans
 
@@ -7,19 +7,17 @@ Created by Mike Gloudemans
 Running colocalization analysis involves many labors, and you've reached the final
 one: interpreting the results.
 
-_Cerberus_ is a suite of tools for exploring colocalization results,
-primarily focused on producing publication-ready heatmaps for visualization across
+_Cerberus_ is a suite of tools for exploring colocalization results
+and producing publication-ready heatmaps for visualization across
 traits, tissues, and QTL types.
 
 The tools were designed to work with results in the output format of the pipeline
 https://github.com/mikegloudemans/ensemble_colocalization_pipeline, but
-they also work with the results of any quantitative gene prioritization pipeline 
+they also work with the results of any quantitative gene prioritization pipeline (e.g. COLOC, FINEMAP, SMR, TWAS, or even custom methods) 
 if the appropriate column headers are included.
 
 The aim of this package is to enable generalized use of these tools with results
-from _any_ GWAS and/or QTL study, with all key parameters optionally overridden by the
-user. So, if you find ways in which the pipeline is incompatible with your own pipeline,
-please feel free to a pull request, so that we might integrate your changes.
+from _any_ GWAS and/or QTL study, and it's designed for easy adaptation to your own needs.
 
 ## Installation and demo
 
