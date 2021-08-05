@@ -19,6 +19,8 @@ if the appropriate column headers are included.
 The aim of this package is to enable generalized use of these tools with results
 from _any_ GWAS and/or QTL study, and it's designed for easy adaptation to your own needs.
 
+![An example plot produced by Cerberus for type 2 diabetes and insulin resistance](https://github.com/mikegloudemans/post-coloc-toolkit/blob/snake-for-main/web-assets/ExampleHeatmap.svg)
+
 ## Installation and demo
 
 This pipeline is implemented using `snakemake`. 
