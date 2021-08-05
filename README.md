@@ -13,7 +13,7 @@ traits, tissues, and QTL types.
 
 The tools were designed to work with results in the output format of the pipeline
 https://github.com/mikegloudemans/ensemble_colocalization_pipeline, but
-they also work with the results of any quantitative gene prioritization pipeline 
+they also work with the results of any quantitative gene prioritization pipeline (e.g. COLOC, FINEMAP, SMR, TWAS, or even custom methods) 
 if the appropriate column headers are included.
 
 The aim of this package is to enable generalized use of these tools with results
