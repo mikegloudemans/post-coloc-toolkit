@@ -361,7 +361,7 @@ def main():
 
 			while True:
 
-				inp = screen_input("Enter the minimum number of allowed SNPs. (If you're not sure, 20 is a good starting point.) Or type 'skip' if you've decided not to set a minimum threshold.\n\n", config)
+				inp = screen_input("\nEnter the minimum number of allowed SNPs. (If you're not sure, 20 is a good starting point.) Or type 'skip' if you've decided not to set a minimum threshold.\n\n", config)
 
 				if inp.lower() == 'skip':
 					no_threshold = True
@@ -418,10 +418,10 @@ def main():
 				else:
 					mapping["map"][field] = out_field			
 
-			print("Great, this is the mapping you specified...")
+			print("\nGreat, this is the mapping you specified...\n")
 			pp.pprint(mapping)
 			print("\n")
-			nested_yesno = get_yes_no("Does this look right? (yes/no)\n\n", config)
+			nested_yesno = get_yes_no("\nDoes this look right? (yes/no)\n\n", config)
 
 			if not nested_yesno:
 				print("\nOK, you can try specifying it again. We'll drop this mapping from the config file.\n")
@@ -447,9 +447,9 @@ def main():
 				else:
 					mapping["map"][field] = out_field
 
-			print("Great, this is the mapping you specified...")
+			print("\nGreat, this is the mapping you specified...\n")
 			pp.pprint(mapping)
-			nested_yesno = get_yes_no("Does this look right? (yes/no)\n\n", config)
+			nested_yesno = get_yes_no("\nDoes this look right? (yes/no)\n\n", config)
 
 			if not nested_yesno:
 				print("OK, you can try specifying it again. We'll drop this mapping from the config file.")
@@ -486,9 +486,9 @@ def main():
 				out_field = screen_input(f"{field}: ", config)
 				mapping["map"][field] = out_field
 
-			print("Great, this is the mapping you specified...")
+			print("\nGreat, this is the mapping you specified...\n")
 			pp.pprint(mapping)
-			nested_yesno = get_yes_no("Does this look right? (yes/no)", config)
+			nested_yesno = get_yes_no("\nDoes this look right? (yes/no)", config)
 
 			if not nested_yesno:
 				print("OK, you can try specifying it again. We'll drop this mapping from the config file.")
@@ -675,7 +675,7 @@ def main():
 				else:
 					# This column is only being created after mutations
 					mutated_column = [mc for mc in config["mutate_columns"]["mutations"] if mc["out"] == column][0]
-					column_vals = set(mutated_column["map"].values())
+					column_vals = list(set(mutated_column["map"].values()))
 
 				while True:
 
@@ -692,12 +692,12 @@ def main():
 						crit_type = screen_input("Which criterion type would you like to define next? (You can define more than one criterion for a single category.)\n\n", config)
 
 						if crit_type not in rule_types:
-							print("\nThat isn't one of the valid types of criteria.\n")
+							print("\n\nThat isn't one of the valid types of criteria.\n")
 							continue
 
 						category[crit_type] = []
 
-						addition = print(f"All right, now which values do you want this {crit_type} criterion to apply to? The possible values in this column are {sorted(list(column_vals))}\n", config)
+						addition = print(f"All right, now which values do you want this {crit_type} criterion to apply to? The possible values in this column are {sorted(column_vals)}\n")
 						
 						while True:
 
@@ -735,7 +735,7 @@ def main():
 							print("\nRule dropped.\n")
 						break
 
-				another_rule = get_yes_no("Now, do you want to add additional rule(s)?", config)
+				another_rule = get_yes_no("Now, do you want to add additional rule(s)?\n\n", config)
 						
 				if another_rule:
 					continue
@@ -744,7 +744,7 @@ def main():
 
 		config["classify_results"]["completed_wizard"] = "True"
 
-		print("We're now done configuring the classify_results tool.")
+		print("We're now done configuring the classify_results tool.\n")
 		
 		save_results(config)	
 	
@@ -757,14 +757,22 @@ def main():
 		# Part 6: Make heatmaps
 		#############################################
 
-		print("And now for the final tool...part 6: make_heatmaps.")
+		print("And now for the final tool...part 6: make_heatmaps.\n")
 
 		config["make_heatmaps"] = {}
 
-		while True:
-			gwas_column = screen_input(f"One more time, the columns in your data at this point are {header}. Which column would you like to use to indicate your GWAS file? (if further customization is needed, please see the README file)", config)
+		extended_header = header[:]
+		if "mutations" in config["mutate_columns"]:
+			for new_column in config["mutate_columns"]["mutations"]:
+				extended_header.append(new_column["out"])
+		if "rules" in config["classify_results"]:
+			for rule in config["classify_results"]["rules"]:
+				extended_header.append(rule)
 
-			if gwas_column not in header:
+		while True:
+			gwas_column = screen_input(f"One more time, the columns in your data at this point are {extended_header}.\n\nWhich column would you like to use to indicate your GWAS trait? (if further customization is needed, please see the README file)\n\n", config)
+
+			if gwas_column not in extended_header:
 				print("That column's not one of the options, try again.")
 				continue
 
@@ -773,9 +781,9 @@ def main():
 			break
 
 		while True:
-			tissue_column = screen_input(f"Which column indicates your QTL tissue (or other QTL context)?", config)
+			tissue_column = screen_input(f"\nWhich column indicates your QTL tissue (or other QTL context)?\n\n", config)
 
-			if tissue_column not in header:
+			if tissue_column not in extended_header:
 				print("That column's not one of the options, try again.")
 				continue
 
@@ -783,26 +791,26 @@ def main():
 
 			break
 
-		yesno = get_yes_no("Do you want to specify a QTL type column? (This column should contain only the values 'eqtl' and 'sqtl'). (yes/no)", config)
+		yesno = get_yes_no("\nDo you want to specify a QTL type column? (This column should contain only the values 'eqtl' and 'sqtl'). (yes/no)\n\n", config)
 
 		if yesno:	
 			while True:
-				qtl_column = screen_input(f"Which column is your QTL type column?", config)
+				qtl_column = screen_input(f"\nWhich column is your QTL type column?\n\n", config)
 
-				if gwas_column not in header:
+				if gwas_column not in extended_header:
 					print("That column's not one of the options, try again.")
 
 				config["make_heatmaps"]["qtl_column"] = qtl_column
 
 				break
 
-		scores_in_cells = get_yes_no("Optionally, the heatmap can display the numerical scores for each colocalization test within the cells. Do you want to do this? (yes/no)", config)
+		scores_in_cells = get_yes_no("\nOptionally, the heatmap can display the numerical scores for each colocalization test within the cells. Do you want to do this? (yes/no)\n\n", config)
 
 		config["make_heatmaps"]["put_scores_in_cells"] = str(scores_in_cells)
 
-		print("Once the heatmap has been generated, you may wish to review results by collapsing across traits, tissues, genes, or some combination of all of of these. If you decide to do this, view the README file and look at the sections on the 'x_axis_collapse' and 'y_axis_collapse' parameters.")
+		print("\nOnce the heatmap has been generated, you may wish to review results by collapsing across traits, tissues, genes, or some combination of all of of these. If you decide to do this, view the README file and look at the sections on the 'x_axis_collapse' and 'y_axis_collapse' parameters.\n\n")
 					
-		print("It's possible to make multiple sets of heatmaps using the same results, each one sorting the loci a bit differently. In any case, we'll define these sets one at a time here.")
+		print("It's possible to make multiple sets of heatmaps using the same results, each one sorting the loci a bit differently. In any case, we'll define these sets one at a time here.\n")
 
 		config["make_heatmaps"]["file_strata"] = []
 
@@ -810,27 +818,26 @@ def main():
 
 			this_stratum = {}
 
-			out_dir = screen_input("What subdirectory would you like your heatmaps placed in, relative to the main output directory? (If you want them placed in the top level of the make_heatmaps directory, just enter nothing):", config)
+			out_dir = screen_input("What subdirectory would you like your heatmaps FOR THIS SET placed in, relative to the main output directory? (If you want them placed in the top level of the make_heatmaps directory, just enter nothing):\n\n", config)
 
 			this_stratum["out_dir"] = out_dir
 
-			concise = get_yes_no("Would you like to omit results for genes that have no colocalizations in any tested condition?", config)
+			concise = get_yes_no("\nWould you like to omit results for genes that have no colocalizations in any tested condition?\n\n", config)
 			this_stratum["concise"] = str(concise)
 
-			has_split_factor = get_yet_no("Do you want to split your heatmaps into sets based on one or more of the columns?")
+			has_split_factor = get_yes_no("\nDo you want to split your heatmaps into sets based on one or more of the columns?\n", config)
 
 			if has_split_factor:
 				split_factors = []
 				while True:
-					factor = screen_input(f"Possible columns for splitting are {header}. Enter the name of a column you'd like to split on:", config)
-					if factor not in header:
+					factor = screen_input(f"\nPossible columns for splitting are {extended_header}. Enter the name of a column you'd like to split on:\n\n", config)
+					if factor not in extended_header:
 						print("Oops, I don't see that column in the header. Try again.")
 						continue
 
 					split_factors.append(factor)
 
-
-					more_factors = get_yes_no(f"Currently you're splitting this set of heatmaps based on {split_factors}. Do you want to add another column to split on for this set?", config)
+					more_factors = get_yes_no(f"\nCurrently you're splitting this set of heatmaps based on {split_factors}. Do you want to add another column to split on for this set?\n\n", config)
 
 					if more_factors:
 						continue
@@ -840,15 +847,16 @@ def main():
 				split_factors = ["no-split"]
 			
 			this_stratum["split_factors"] = split_factors
-			file_strata.append(this_stratum)
 
-			print("Great, we've added this heatmap set configuration to the config set. (If you want to modify further settings, such as excluding certain sets of results from the heatmap, see the README for info on how to make these further modifications.)")
+			config["make_heatmaps"]["file_strata"].append(this_stratum)
 
-			print("Your current heatmap configurations:")
+			print("\nGreat, we've added this heatmap set configuration to the config set. (If you want to modify further settings, such as excluding certain sets of results from the heatmap, see the README for info on how to make these further modifications.)")
+
+			print("\nYour current heatmap configurations:\n")
 
 			pp.pprint(config["make_heatmaps"])
 			
-			another_set = get_yes_no("Do you want to define another way of stratifying the sets of heatmaps? (yes/no)", config)
+			another_set = get_yes_no("\n\nDo you want to define another way of stratifying the sets of heatmaps? (yes/no)\n\n", config)
 
 			if another_set:
 				continue
