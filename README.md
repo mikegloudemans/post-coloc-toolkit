@@ -17,9 +17,7 @@ they also work with the results of any quantitative gene prioritization pipeline
 if the appropriate column headers are included.
 
 The aim of this package is to enable generalized use of these tools with results
-from _any_ GWAS and/or QTL study, with all key parameters optionally overridden by the
-user. So, if you find ways in which the pipeline is incompatible with your own pipeline,
-please feel free to a pull request, so that we might integrate your changes.
+from _any_ GWAS and/or QTL study, and it's designed for easy adaptation to your own needs.
 
 ## Installation and demo
 
