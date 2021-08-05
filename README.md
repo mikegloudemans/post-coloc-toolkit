@@ -1,4 +1,4 @@
-# _Cerberus_: The last labor of colocalization
+# _Cerberus_: A post-colocalization toolkit
 
 Created by Mike Gloudemans
 
