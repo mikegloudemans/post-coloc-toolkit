@@ -522,16 +522,17 @@ def main():
 		header_yesno = "True"
 		ensembl_col = 1
 		hgnc_col = 3
+		hgnc_file = "data/hgnc/ensembl_to_hgnc.txt"
 		if yesno:
 			while True:
-				inp = screen_input("\nType the location of the file you'd like to use.\n\n", config)
+				hgnc_file = screen_input("\nType the location of the file you'd like to use.\n\n", config)
 		
-				if not os.path.isfile(inp):
+				if not os.path.isfile(hgnc_file):
 					print("That file doesn't seem to exist, please try again. Be sure either to use an absolute path or to specify the path relative to the 'wizard.py' directory.\n\n")
 					continue
 
 				print("Great. The head of your file is as follows:\n")
-				with open(inp) as f:
+				with open(hgnc_file) as f:
 					for i in range(10):
 						print(f.readline().strip())
 
@@ -579,7 +580,7 @@ def main():
 		config["add_hgnc_names"]["header"] = header_yesno
 		config["add_hgnc_names"]["ensembl_col_index"] = ensembl_col
 		config["add_hgnc_names"]["hgnc_col_index"] = hgnc_col
-		config["add_hgnc_names"]["ensembl_to_hgnc_map_file"] = inp
+		config["add_hgnc_names"]["ensembl_to_hgnc_map_file"] = hgnc_file
 
 		config["add_hgnc_names"]["completed_wizard"] = "True"	
 
@@ -800,7 +801,7 @@ def main():
 				if gwas_column not in extended_header:
 					print("That column's not one of the options, try again.")
 
-				config["make_heatmaps"]["qtl_column"] = qtl_column
+				config["make_heatmaps"]["type_column"] = qtl_column
 
 				break
 
@@ -818,14 +819,14 @@ def main():
 
 			this_stratum = {}
 
-			out_dir = screen_input("What subdirectory would you like your heatmaps FOR THIS SET placed in, relative to the main output directory? (If you want them placed in the top level of the make_heatmaps directory, just enter nothing):\n\n", config)
+			out_dir = screen_input("\nWhat subdirectory would you like your heatmaps FOR THIS SET placed in, relative to the main output directory? (If you want them placed in the top level of the make_heatmaps directory, just enter nothing):\n\n", config)
 
 			this_stratum["out_dir"] = out_dir
 
 			concise = get_yes_no("\nWould you like to omit results for genes that have no colocalizations in any tested condition?\n\n", config)
 			this_stratum["concise"] = str(concise)
 
-			has_split_factor = get_yes_no("\nDo you want to split your heatmaps into sets based on one or more of the columns?\n", config)
+			has_split_factor = get_yes_no("\n\nDo you want to split your heatmaps into sets based on one or more of the columns?\n", config)
 
 			if has_split_factor:
 				split_factors = []
@@ -842,11 +843,12 @@ def main():
 					if more_factors:
 						continue
 					break
+			
+				this_stratum["split_factors"] = split_factors
 
 			else:
-				split_factors = ["no-split"]
-			
-			this_stratum["split_factors"] = split_factors
+				# No split factors; heatmap script will recognize this and do the default
+				pass
 
 			config["make_heatmaps"]["file_strata"].append(this_stratum)
 

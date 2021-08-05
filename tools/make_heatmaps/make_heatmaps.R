@@ -8,7 +8,6 @@ suppressWarnings(suppressMessages(library(reshape2)))
 suppressWarnings(suppressMessages(library(tidyr)))
 suppressWarnings(suppressMessages(require(rjson)))
 
-chunk_size = 100
 row_height=0.21
 col_width=0.2
 
@@ -26,20 +25,19 @@ make_heatmaps = function(config_file, input_file, output_directory, completion_i
 	config$input_file = input_file
 	config$output_directory = output_directory
 	
-	if ("rows_per_page" %in% names(config))
+	if (!("rows_per_page" %in% names(config)))
 	{
-		chunk_size = as.numeric(config$rows_per_page)
+		config$rows_per_page = 100
 	}
 
 	# Load results table
 	coloc_res = get_coloc_results(config$input_file, config)
 	coloc_res = coloc_res %>% arrange(-score)
-	
+
 	# Make an individual split for every stratification wanted.
        	# Specify this in the config file	
 	for (strat in config$file_strata)
 	{
-
 		coloc_res_tmp = coloc_res
 		coloc_res_tmp$split_column = ""
 		if(!("split_factors" %in% names(strat)))
@@ -50,7 +48,7 @@ make_heatmaps = function(config_file, input_file, output_directory, completion_i
 		{
 			print(sprintf("Stratifying by %s", strat$split_factors))
 		}
-
+	
 		for (column in strat$split_factors)	
 		{
 			if (sum(coloc_res_tmp$split_column != "") == 0)
@@ -108,7 +106,7 @@ make_heatmaps = function(config_file, input_file, output_directory, completion_i
 		coloc_res_tmp = coloc_res_tmp %>% arrange(y_factor)
 
 
-		if (tolower(config$cluster) == "true")
+		if (("cluster" %in% names(config)) && (tolower(config$cluster) == "true"))
 		{
 			# Binarize cells into colocalize or non-colocalized
 			coloc_res_tmp$clust_stat = 0
@@ -160,7 +158,6 @@ get_coloc_results = function(coloc_file, config)
 {
 	# Read coloc results
 	coloc_res=as.data.frame(fread(file = coloc_file, sep = '\t', header = T, check.names = F))
-	
 	# Identify the QTL type and tissue for each coloc test
 	coloc_res$qtl_type = coloc_res[[config[["type_column"]]]]
 	coloc_res$tissue = coloc_res[[config[["tissue_column"]]]]
@@ -168,13 +165,13 @@ get_coloc_results = function(coloc_file, config)
 	
 	# If tissue order not specified, just do it alphabetically
 	if (!("tissue_order" %in% names(config))){
-		config$tissue_order = sort(coloc_res$tissue)
+		config$tissue_order = sort(unique(coloc_res$tissue))
 	}
 	coloc_res$tissue = factor(x=coloc_res$tissue, levels=config$tissue_order)
 
 	# If tissue order not specified, just do it alphabetically
 	if (!("gwas_order" %in% names(config))){
-		config$gwas_order = sort(coloc_res$gwas_label)
+		config$gwas_order = sort(unique(coloc_res$gwas_label))
 	}
 	coloc_res$gwas_label = factor(x=coloc_res$gwas_label, levels=config$gwas_order)
 
@@ -238,15 +235,15 @@ plot_heatmap = function(coloc_res, strat, config)
 
 		row_count = length(unique(tmp_data$y_factor))
 
-		max_chunk = floor(row_count / chunk_size + 1)
+		max_chunk = floor(row_count / config$rows_per_page + 1)
 
 		for (chunk in 1:max_chunk)
 		{
-			tmp_chunk = tmp_data[tmp_data$y_factor %in% unique(tmp_data$y_factor)[(1+(chunk-1)*chunk_size):min(chunk_size*chunk, row_count)],]
+			tmp_chunk = tmp_data[tmp_data$y_factor %in% unique(tmp_data$y_factor)[(1+(chunk-1)*config$rows_per_page):min(config$rows_per_page*chunk, row_count)],]
 			tmp_chunk$y_factor = factor(tmp_chunk$y_factor, levels = rev(unique(tmp_chunk$y_factor)))
 
 			# Genes per locus
-			genes_per_locus = tmp_chunk %>% group_by(locus) %>% summarize(genes_at_locus=length(unique(y_factor))) %>% arrange(locus)
+			genes_per_locus = suppressWarnings(suppressMessages(tmp_chunk %>% group_by(locus) %>% summarize(genes_at_locus=length(unique(y_factor))) %>% arrange(locus)))
 
 			num_cols = length(levels(tmp_chunk$x_factor))
 			if (("x_axis_collapse" %in% names(config)) && ((config$x_axis_collapse == "tissues") || (config$x_axis_collapse == "tissues-gwas")))
@@ -319,10 +316,9 @@ get_heatmap_classes = function(coloc_res, config)
 	      }
 	      return("none")
         }
-	coloc_types = coloc_res %>% group_by(x_factor, y_factor) %>% summarize(coloc_class = get_coloc_type(qtl_type, coloc_status, x_factor, y_factor))
+	coloc_types = suppressWarnings(suppressMessages(coloc_res %>% group_by(x_factor, y_factor) %>% summarize(coloc_class = get_coloc_type(qtl_type, coloc_status, x_factor, y_factor))))
 
 	coloc_res = full_join(coloc_res, coloc_types, by = c("x_factor", "y_factor"))
-
 	coloc_res$coloc_class=factor(x = coloc_res$coloc_class, 
 	levels=c("none", 
 		 "sqtl",  
@@ -351,7 +347,7 @@ collapse_axis_factors = function(coloc_res_tmp, config)
 	} else
 	{
 		coloc_res$y_factor = paste(coloc_res$locus, coloc_res$hgnc, sep="-")
-	}
+	}	
 
 	coloc_res = coloc_res %>% arrange(as.numeric(coloc_res$locus))
 	coloc_res$y_factor = factor(coloc_res$y_factor, levels = unique(coloc_res$y_factor))
@@ -377,6 +373,7 @@ collapse_axis_factors = function(coloc_res_tmp, config)
 	
 	return(coloc_res)
 }
+
 
 args = commandArgs(trailingOnly=TRUE)
 

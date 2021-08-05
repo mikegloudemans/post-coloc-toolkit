@@ -45,7 +45,7 @@ classify_results = function(config_file, input_file, output_file, summary_file)
 			print(sprintf("Warning: not all loci in have been assigned to a group in %s.
 				Check to make sure rules define the entire space of loci.", rule_name))
 		}
-		locus_classes = results %>% group_by(!!as.name(rule_name)) %>% summarize(num_loci=length(unique(locus)))
+		locus_classes = suppressMessages(suppressWarnings(results %>% group_by(!!as.name(rule_name)) %>% summarize(num_loci=length(unique(locus)))))
 		suppressWarnings(write.table(locus_classes, file = gsub("_completion_indicator.tmp", sprintf("_%s.txt", rule_name), config$summary_file), sep="\t", quote=FALSE, row.names=FALSE,col.names=TRUE))
 	}
 
@@ -65,10 +65,10 @@ class_by_num_coloc = function(results, rule, rule_name)
 	class_membership = rep("", length(loci_list))
 
 	# For each feature, test whether it passed colocalization threshold at this locus 
-	summary = results %>% group_by(locus, ensembl) %>% summarize(colocs=sum(coloc_status=="coloc"))
+	summary = suppressMessages(suppressWarnings(results %>% group_by(locus, ensembl) %>% summarize(colocs=sum(coloc_status=="coloc"))))
 
 	# Now summarize the number of colocalized genes and the number of candidate genes at each locus
-	coloc_counts = summary %>% group_by(locus) %>% summarize(num_coloc_genes = sum(colocs > 0), num_candidate_genes=length(ensembl))
+	coloc_counts = suppressMessages(suppressWarnings(summary %>% group_by(locus) %>% summarize(num_coloc_genes = sum(colocs > 0), num_candidate_genes=length(ensembl))))
 
 	# Each of these rule types takes as input a value X, a list of indices of candidate loci, and the
 	# metadata about the number of colocalizations and tested genes at every locus.
@@ -155,7 +155,7 @@ class_by_column_specificity = function(results, rule, coloc_threshold, rule_name
 	class_membership = rep("None", length(loci_list))
 
 	# Figure out which tissues had strong, weak, no colocs at each locus
-	tissue_coloc = results %>% group_by(locus, !!as.name(rule$column)) %>% summarize(has_coloc = as.numeric(sum(coloc_status == "coloc") > 0))
+	tissue_coloc = suppressMessages(suppressWarnings(results %>% group_by(locus, !!as.name(rule$column)) %>% summarize(has_coloc = as.numeric(sum(coloc_status == "coloc") > 0))))
 
 	all_colocs = tissue_coloc[tissue_coloc$has_coloc == TRUE,] 
 	coloc_loci = unique(all_colocs$locus)
