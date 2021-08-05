@@ -76,6 +76,8 @@ Here I briefly describe each tool and delineate how a typical workflow might loo
 in greater detail, with parameter definitions and instructions for creating a custom config file.
 These tools are listed in the order they will run for a typical workflow.
 
+![A schematic flowchart of the steps in the Cerberus workflow](https://github.com/mikegloudemans/post-coloc-toolkit/blob/snake-for-main/web-assets/Flowchart.svg)
+
 ### post-hoc-filter
 
 Filter out any studies or SNPs that meet exclusion criteria for this particular
