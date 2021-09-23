@@ -1,0 +1,11 @@
+.nfs*
+.snakemake
+data/cadd
+data/dbsnp
+data/ld
+data/other-cadd
+data/pre_coloc_results
+output
+tools/classify_results/.*
+auxiliary
+animate.R

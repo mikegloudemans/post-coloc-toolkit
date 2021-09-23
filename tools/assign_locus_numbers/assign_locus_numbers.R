@@ -1,4 +1,4 @@
-require(rjson)
+suppressWarnings(suppressMessages(require(rjson)))
 
 ############################################################
 ### Cluster colocalization results into loci
@@ -54,58 +54,78 @@ require(rjson)
 # them to be grouped in an all-or-none fashion.
 #
 
+default_distance_between_loci = 1000000
 
-assign_locus_numbers = function()
+assign_locus_numbers = function(config_file, input_file, output_file)
 {
-	# Read table with colocalization results
-	
-	# Load config file
-	config_file = commandArgs(trailingOnly=TRUE)[1]
-	config = validate_config(config_file)
+	config = fromJSON(file=config_file)$assign_locus_numbers
+	config$input_file = input_file
+	config$output_file = output_file
 
-	# Load results file
+	# Load results table
 	results = load_results_file(config)
-
-	# Get loci
-	if (("assign_locus_numbers" %in% names(config)) && ("min_locus_distance" %in% names(config$assign_locus_numbers)))
-	{
+	
+	if (FALSE)
+	{		
+		# Get loci
+		if ("min_locus_distance" %in% names(config$assign_locus_numbers))
+		{
 		}
-	results$locus = group_to_loci(results$ref_snp, min_locus_distance)
+		results$locus = group_to_loci(results$ref_snp, min_locus_distance)
+	}
+
+	min_locus_distance = default_distance_between_loci
+
+	results$locus = group_to_loci(results$ref_snp, config$genome_file)
 
 	# Output SNP table with loci
-	if (("assign_locus_numbers" %in% names(config)) && ("output_results_file" %in% names(config$assign_locus_numbers)))
-	{
-		write.table(results, config$assign_locus_numbers$output_results_file, quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
-	} else
-	{
-		write.table(results, file=paste(config$out_dir, "filtered_coloc_table_with_loci.txt", sep="/"), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
-	}
+	write.table(results, config$output_file, quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
+
+	
 }
 
 # Function inputs a vector of SNPs and clusters them into locis
 # by distance
-group_to_loci = function(x, min_dist)
+
+group_to_loci = function(x, genome_build)
 {
-        ids = unique(as.character(x))
+	# Get the set of unique reference SNPs
+	ids = unique(as.character(x))
 	ids = ids[order(ids)]
-        chr = sapply(as.character(ids), function(x) {strsplit(x, "_")[[1]][1]})
+        chr = as.numeric(sapply(as.character(ids), function(x) {strsplit(x, "_")[[1]][1]}))
         pos = as.numeric(sapply(as.character(ids), function(x) {strsplit(x, "_")[[1]][2]}))
         loc_nums = rep(0, length(ids))
-        loc_nums[1] = 1
-        for (i in 2:length(ids))
-        {
-                # Check if there's a SNP above in the list within 1 MB of this SNP]
-                same = (chr[1:(i-1)] == chr[i]) & (abs(pos[1:(i-1)] - pos[i]) < min_dist)
-                if (length(which(same)) != 0)
-                {
-                        loc_nums[i] = loc_nums[which(same)[1]]
-                }
-                else
-                {
-                        loc_nums[i] = max(loc_nums) + 1
-                }
-        }
 
+	# I ran liftOver to convert to hg38
+	# liftOver fourier_ls-all.hg19.bed /mnt/lab_data/montgomery/shared/liftOver/chains/hg19ToHg38.over.chain.gz fourier_ls-all.hg38.bed fourier_ls-all.hg38.failed.bed 
+
+	# Load European independent LD block partitioning from LDetect
+
+	if (genome_build == "hg19")
+	{
+		ldetect = read.table("data/ldetect/fourier_ls-all.hg19.connected.bed", header=FALSE)
+	}
+
+	if (genome_build == "hg38")
+	{
+		ldetect = read.table("data/ldetect/fourier_ls-all.hg38.connected.bed", header=FALSE)
+	}
+
+	colnames(ldetect) = c("chr", "start", "stop")
+	ldetect$chr = as.numeric(gsub("chr", "", ldetect$chr))
+	ldetect$locus = 1:dim(ldetect)[1]
+
+	# Assign each SNP to its own locus segment
+        for (i in 1:length(ids))
+	{
+		# Get the chromosome we're looking for
+		sub_chr = ldetect[ldetect$chr == chr[i],]
+		# Get the exact block we're looking for
+		sub_locus = sub_chr[sub_chr$start <= pos[i] & sub_chr$stop > pos[i],]
+		loc_nums[i] = sub_locus$locus[1]
+	}
+
+	# TODO: Deal with any NA's
 	mapped_loci = sapply(x, function(j) 
 	{
 			loc_nums[which(ids == j)]
@@ -116,14 +136,7 @@ group_to_loci = function(x, min_dist)
 
 load_results_file = function(config)
 {
-	if ((("assign_locus_numbers") %in% names(config)) && ("input_results_file" %in% names(config$assign_locus_numbers)))
-	{
-		d = read.table(file=config$assign_locus_numbers$input_results_file, header=TRUE)
-	}
-	else
-	{
-		d = read.table(file=paste(config$output_dir, "filtered_coloc_table.txt", sep="/"), header=TRUE)
-	}
+	d = read.table(file=config$input_file, header=TRUE, sep="\t")
 
 	# Quick input check
 	if (!("ref_snp" %in% colnames(d)))
@@ -134,11 +147,9 @@ load_results_file = function(config)
 	return(d)
 }
 
-validate_config = function(config_file)
-{
-	
-}
+args = commandArgs(trailingOnly=TRUE)
 
-main()
-
-
+config_file = args[1]
+input_file = args[2]
+output_file = args[3]
+assign_locus_numbers(config_file, input_file, output_file)
