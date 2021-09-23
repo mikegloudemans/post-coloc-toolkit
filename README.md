@@ -1,6 +1,6 @@
 # _Cerberus_: A post-colocalization toolkit
 
-Created by Mike Gloudemans
+Created by Mike Gloudemans and Bruna Balliu
 
 ## Summary
 
